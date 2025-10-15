@@ -1,0 +1,21 @@
+{
+  "name": "drishti-ai",
+  "version": "1.0.0",
+  "description": "AI-powered vision assistant for visually impaired users",
+  "scripts": {
+    "install:all": "npm install && cd client && npm install && cd ../server && npm install",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "start:server": "cd server && npm start",
+    "start:client": "cd client && npm run dev",
+    "build:client": "cd client && npm run build"
+  },
+  "keywords": [
+    "ai",
+    "accessibility",
+    "vision-assistant",
+    "ollama"
+  ],
+  "author": "",
+  "license": "MIT"
+}
