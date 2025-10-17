@@ -1,17 +1,23 @@
 import os
-import xml.etree.ElementTree as ET
 import random
 import shutil
 from tqdm import tqdm
+import yaml
+from collections import defaultdict
 
 # ------------------------------
 # Configuration
 # ------------------------------
-ANNOTATIONS_DIR = "WOTR/Annotations"
-JPEG_IMAGES_DIR = "WOTR/JPEGImages"
-OUTPUT_DIR = "WOTR_YOLO"
+ANNOTATIONS_DIR = "datasets/WOTR/train/labels"
+IMAGES_DIR = "datasets/WOTR/train/images"
+OUTPUT_DIR = "WOTR_processed_balanced" # Using a new output directory
 TRAIN_RATIO = 0.8
-SAMPLE_SIZE = 2000  # Number of images to sample
+
+# --- Balanced Sampling Configuration ---
+# This is the maximum number of files to include for any single class.
+# It prevents common classes like 'car' or 'person' from dominating the dataset.
+# Classes with fewer files than this will have all their files included.
+MAX_FILES_PER_CLASS = 1500
 
 # Define the classes you want to include
 CLASSES = ['ashcan', 'bicycle', 'blind_road', 'bus', 'car', 'crosswalk', 'dog', 'fire_hydrant', 'green_light', 'motorcycle', 'person', 'pole', 'red_light', 'reflective_cone', 'roadblock', 'sign', 'tree', 'tricycle', 'truck', 'warning_column']
@@ -19,129 +25,126 @@ CLASSES = ['ashcan', 'bicycle', 'blind_road', 'bus', 'car', 'crosswalk', 'dog', 
 # ------------------------------
 # Helper Functions
 # ------------------------------
-def get_image_size(annotation_path):
-    """Gets image size from an XML file."""
-    try:
-        tree = ET.parse(annotation_path)
-        root = tree.getroot()
-        size = root.find('size')
-        width = int(size.find('width').text)
-        height = int(size.find('height').text)
-        return width, height
-    except (ET.ParseError, AttributeError, ValueError) as e:
-        print(f"Error parsing {annotation_path}: {e}")
-        return 0, 0
+def create_directories():
+    """Create necessary directories for the processed dataset."""
+    dirs = [
+        os.path.join(OUTPUT_DIR, split, dtype)
+        for split in ['train', 'val', 'test']
+        for dtype in ['images', 'labels']
+    ]
+    for d in dirs:
+        os.makedirs(d, exist_ok=True)
 
-def convert_to_yolo_format(size, box):
-    """Converts a single XML annotation to YOLO format."""
-    width, height = size
-    xmin, ymin, xmax, ymax = box
-
-    # YOLO format: (x_center, y_center, width, height) normalized
-    x_center = (xmin + xmax) / (2.0 * width)
-    y_center = (ymin + ymax) / (2.0 * height)
-    w = (xmax - xmin) / (1.0 * width)
-    h = (ymax - ymin) / (1.0 * height)
-
-    return x_center, y_center, w, h
-
-# ------------------------------
-# Main Processing
-# ------------------------------
-def main():
-    """Main function to process the dataset."""
-    print("🚀 Starting dataset preparation...")
-
-    # Create output directories
-    train_images_dir = os.path.join(OUTPUT_DIR, 'train', 'images')
-    train_labels_dir = os.path.join(OUTPUT_DIR, 'train', 'labels')
-    val_images_dir = os.path.join(OUTPUT_DIR, 'val', 'images')
-    val_labels_dir = os.path.join(OUTPUT_DIR, 'val', 'labels')
-
-    for path in [train_images_dir, train_labels_dir, val_images_dir, val_labels_dir]:
-        os.makedirs(path, exist_ok=True)
-        print(f"Directory created: {path}")
-
-    # Get all annotation files and sample them
-    all_annotations = [f for f in os.listdir(ANNOTATIONS_DIR) if f.endswith('.xml')]
-    if len(all_annotations) > SAMPLE_SIZE:
-        sampled_annotations = random.sample(all_annotations, SAMPLE_SIZE)
-        print(f"✅ Sampled {SAMPLE_SIZE} annotations from {len(all_annotations)} total.")
-    else:
-        sampled_annotations = all_annotations
-        print(f"⚠️ Using all {len(all_annotations)} annotations as it's less than the sample size.")
-
-    # Split into training and validation sets
-    random.shuffle(sampled_annotations)
-    split_index = int(len(sampled_annotations) * TRAIN_RATIO)
-    train_annotations = sampled_annotations[:split_index]
-    val_annotations = sampled_annotations[split_index:]
-
-    print(f"Split: {len(train_annotations)} for training, {len(val_annotations)} for validation.")
-
-    # Process each set
-    for subset, output_img_dir, output_lbl_dir in [
-        (train_annotations, train_images_dir, train_labels_dir),
-        (val_annotations, val_images_dir, val_labels_dir)
-    ]:
-        count = 0
-        for annotation_file in tqdm(subset, desc=f"Processing {subset} a"):
-            annotation_path = os.path.join(ANNOTATIONS_DIR, annotation_file)
-
-            # Derive image filename from annotation filename
-            image_filename_base = os.path.splitext(annotation_file)[0]
-            image_filename = image_filename_base + '.jpg'
-            image_path = os.path.join(JPEG_IMAGES_DIR, image_filename)
-
-            if not os.path.exists(image_path):
-                print(f"⚠️ Image not found for {annotation_file} (expected {image_filename}), skipping.")
-                continue
-
-            # Get image size from the XML file
-            width, height = get_image_size(annotation_path)
-            if width == 0 or height == 0:
-                print(f"⚠️ Could not get image size for {annotation_file}, skipping.")
-                continue
-            
-            # Parse XML for bounding boxes
-            try:
-                tree = ET.parse(annotation_path)
-                root = tree.getroot()
-            except ET.ParseError as e:
-                print(f"⚠️ Could not parse XML for {annotation_file}: {e}, skipping.")
-                continue
-
-            yolo_labels = []
-            for obj in root.findall('object'):
-                name = obj.find('name').text
-                if name not in CLASSES:
+def build_class_file_map():
+    """
+    Analyzes all label files and maps each class to the set of files it appears in.
+    Returns a dictionary: {class_index: {'file1.txt', 'file2.txt', ...}}
+    """
+    class_map = defaultdict(set)
+    print("🔎 Building class index from all label files...")
+    all_labels = [f for f in os.listdir(ANNOTATIONS_DIR) if f.endswith('.txt')]
+    for label_file in tqdm(all_labels, desc="Analyzing labels"):
+        with open(os.path.join(ANNOTATIONS_DIR, label_file), 'r') as f:
+            for line in f:
+                try:
+                    class_index = int(line.split()[0])
+                    class_map[class_index].add(label_file)
+                except (ValueError, IndexError):
                     continue
+    return class_map
 
-                class_id = CLASSES.index(name)
-                bndbox = obj.find('bndbox')
-                xmin = int(bndbox.find('xmin').text)
-                ymin = int(bndbox.find('ymin').text)
-                xmax = int(bndbox.find('xmax').text)
-                ymax = int(bndbox.find('ymax').text)
+def perform_balanced_sampling(class_map):
+    """
+    Samples files using the class map to create a more balanced dataset.
+    It undersamples common classes and includes all files for rare classes.
+    """
+    final_files_set = set()
+    print("\n⚖️ Performing balanced sampling...")
+    for class_index, files in sorted(class_map.items()):
+        class_name = CLASSES[class_index]
+        if len(files) > MAX_FILES_PER_CLASS:
+            # If a class is too common, randomly sample from its files
+            sampled = random.sample(list(files), MAX_FILES_PER_CLASS)
+            final_files_set.update(sampled)
+            print(f"  - Class '{class_name}' has {len(files)} files. Undersampling to {MAX_FILES_PER_CLASS}.")
+        else:
+            # If a class is rare, include all of its files
+            final_files_set.update(files)
+            print(f"  - Class '{class_name}' has {len(files)} files. Including all.")
 
-                # Convert to YOLO format
-                x_center, y_center, w, h = convert_to_yolo_format((width, height), (xmin, ymin, xmax, ymax))
-                yolo_labels.append(f"{class_id} {x_center:.6f} {y_center:.6f} {w:.6f} {h:.6f}")
+    # Convert the set of label files back to (image, label) tuples
+    balanced_data = []
+    for label_file in final_files_set:
+        img_file = label_file.replace('.txt', '.jpg')
+        balanced_data.append((img_file, label_file))
 
-            if not yolo_labels:
-                print(f"⚠️ No relevant objects found in {annotation_file}, skipping.")
-                continue
+    return balanced_data
 
-            # Copy image and write YOLO label
-            shutil.copy(image_path, os.path.join(output_img_dir, image_filename))
-            label_filename = os.path.splitext(image_filename)[0] + '.txt'
-            with open(os.path.join(output_lbl_dir, label_filename), 'w') as f:
-                f.write('\n'.join(yolo_labels))
-            
-            count += 1
-        print(f"✅ Processed {count} files for the subset.")
+def split_data(data_files):
+    """Split data into train, validation, and test sets."""
+    random.shuffle(data_files)
+    train_size = int(len(data_files) * TRAIN_RATIO)
+    val_size = int(len(data_files) * ((1 - TRAIN_RATIO) / 2))
+    
+    train_files = data_files[:train_size]
+    val_files = data_files[train_size:train_size + val_size]
+    test_files = data_files[train_size + val_size:]
+    
+    return train_files, val_files, test_files
 
-    print("🎉 Dataset preparation complete!")
+def copy_files(files, split):
+    """Copy files to their respective directories."""
+    for img_file, label_file in tqdm(files, desc=f"Copying {split} files"):
+        # Copy image
+        src_img = os.path.join(IMAGES_DIR, img_file)
+        dst_img = os.path.join(OUTPUT_DIR, split, 'images', img_file)
+        if os.path.exists(src_img):
+            shutil.copy2(src_img, dst_img)
+
+        # Copy label
+        src_label = os.path.join(ANNOTATIONS_DIR, label_file)
+        dst_label = os.path.join(OUTPUT_DIR, split, 'labels', label_file)
+        if os.path.exists(src_label):
+            shutil.copy2(src_label, dst_label)
+
+def create_data_yaml(filename="wotr_balanced.yaml"):
+    """Create data.yaml file for YOLOv8 training."""
+    data = {
+        'path': os.path.abspath(OUTPUT_DIR),
+        'train': os.path.join('train', 'images'),
+        'val': os.path.join('val', 'images'),
+        'test': os.path.join('test', 'images'),
+        'names': {i: name for i, name in enumerate(CLASSES)},
+        'nc': len(CLASSES)
+    }
+    
+    with open(os.path.join(OUTPUT_DIR, filename), 'w') as f:
+        yaml.dump(data, f, sort_keys=False)
+
+def main():
+    """Main function to prepare the WOTR dataset."""
+    print("🚀 Starting WOTR dataset preparation with BALANCED sampling...")
+    
+    create_directories()
+    
+    class_to_files_map = build_class_file_map()
+    
+    sampled_files = perform_balanced_sampling(class_to_files_map)
+    print(f"\n📊 Total unique files after balanced sampling: {len(sampled_files)}")
+    
+    train_files, val_files, test_files = split_data(sampled_files)
+    print(f"Split sizes: Train={len(train_files)}, Val={len(val_files)}, Test={len(test_files)}")
+    
+    copy_files(train_files, 'train')
+    copy_files(val_files, 'val')
+    copy_files(test_files, 'test')
+    
+    yaml_filename = "wotr_balanced.yaml"
+    create_data_yaml(yaml_filename)
+    
+    print("\n✅ Dataset preparation complete!")
+    print(f"📁 Processed balanced dataset saved to '{OUTPUT_DIR}'")
+    print(f"👉 Use '{os.path.join(OUTPUT_DIR, yaml_filename)}' for your next training.")
 
 if __name__ == "__main__":
     main()

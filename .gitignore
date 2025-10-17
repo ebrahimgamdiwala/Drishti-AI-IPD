@@ -56,3 +56,9 @@ __pycache__/
 runs
 WOTR
 WOTR_YOLO
+WOTR_processed
+datasets
+
+*.jpg
+*.jpeg
+*.png

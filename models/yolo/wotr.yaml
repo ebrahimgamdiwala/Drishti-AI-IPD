@@ -1,5 +1,26 @@
-train: WOTR_YOLO/train/images
-val: WOTR_YOLO/val/images
-
+path: E:\IPD\models\yolo\WOTR_processed
+train: train\images
+val: val\images
+test: test\images
+names:
+  0: ashcan
+  1: bicycle
+  2: blind_road
+  3: bus
+  4: car
+  5: crosswalk
+  6: dog
+  7: fire_hydrant
+  8: green_light
+  9: motorcycle
+  10: person
+  11: pole
+  12: red_light
+  13: reflective_cone
+  14: roadblock
+  15: sign
+  16: tree
+  17: tricycle
+  18: truck
+  19: warning_column
 nc: 20
-names: ['ashcan', 'bicycle', 'blind_road', 'bus', 'car', 'crosswalk', 'dog', 'fire_hydrant', 'green_light', 'motorcycle', 'person', 'pole', 'red_light', 'reflective_cone', 'roadblock', 'sign', 'tree', 'tricycle', 'truck', 'warning_column']
