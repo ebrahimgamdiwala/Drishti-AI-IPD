@@ -36,3 +36,23 @@ server/uploads/
 
 # Test coverage
 coverage/
+
+# Model files
+*.pt
+yolov8n.pt
+
+# IDE settings
+.vscode/
+
+# macOS Application bundle
+models/yolo/Camo Studio.app
+
+.venv
+venv
+env
+myvenv
+__pycache__/
+*.pyc
+runs
+WOTR
+WOTR_YOLO
