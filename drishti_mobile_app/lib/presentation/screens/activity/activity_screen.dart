@@ -1,5 +1,5 @@
 /// Drishti App - Activity Screen
-/// 
+///
 /// History timeline view.
 library;
 
@@ -74,9 +74,9 @@ class _ActivityScreenState extends State<ActivityScreen> {
                   Text(
                     AppStrings.history,
                     style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primaryBlue,
-                        ),
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primaryBlue,
+                    ),
                   ),
                   IconButton(
                     onPressed: () {},
@@ -84,9 +84,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
                     tooltip: 'Filter',
                   ),
                 ],
-              )
-                  .animate()
-                  .fadeIn(duration: 300.ms),
+              ).animate().fadeIn(duration: 300.ms),
             ),
 
             // Activity list
@@ -98,7 +96,8 @@ class _ActivityScreenState extends State<ActivityScreen> {
                       itemCount: _activities.length,
                       itemBuilder: (context, index) {
                         final activity = _activities[index];
-                        final showDateHeader = index == 0 ||
+                        final showDateHeader =
+                            index == 0 ||
                             !_isSameDay(
                               _activities[index - 1].timestamp,
                               activity.timestamp,
@@ -109,10 +108,14 @@ class _ActivityScreenState extends State<ActivityScreen> {
                           children: [
                             if (showDateHeader)
                               Padding(
-                                padding: const EdgeInsets.only(top: 16, bottom: 8),
+                                padding: const EdgeInsets.only(
+                                  top: 16,
+                                  bottom: 8,
+                                ),
                                 child: Text(
                                   _getDateHeader(activity.timestamp),
-                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(
                                         fontWeight: FontWeight.w600,
                                         color: AppColors.textSecondaryLight,
                                       ),
@@ -168,7 +171,8 @@ class _ActivityScreenState extends State<ActivityScreen> {
   String _getDateHeader(DateTime date) {
     final now = DateTime.now();
     if (_isSameDay(date, now)) return 'Today';
-    if (_isSameDay(date, now.subtract(const Duration(days: 1)))) return 'Yesterday';
+    if (_isSameDay(date, now.subtract(const Duration(days: 1))))
+      return 'Yesterday';
     return DateFormat('EEEE, MMM d').format(date);
   }
 }
@@ -181,7 +185,7 @@ class _ActivityTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -209,13 +213,9 @@ class _ActivityTile extends StatelessWidget {
                 color: _getIconColor().withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
-                _getIcon(),
-                color: _getIconColor(),
-                size: 22,
-              ),
+              child: Icon(_getIcon(), color: _getIconColor(), size: 22),
             ),
-            
+
             const SizedBox(width: 16),
 
             // Content
@@ -228,9 +228,8 @@ class _ActivityTile extends StatelessWidget {
                       Expanded(
                         child: Text(
                           activity.title,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
                         ),
                       ),
                       if (activity.severity != null)
@@ -263,8 +262,8 @@ class _ActivityTile extends StatelessWidget {
                   Text(
                     _getTimeString(activity.timestamp),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondaryLight,
-                        ),
+                      color: AppColors.textSecondaryLight,
+                    ),
                   ),
                 ],
               ),
@@ -326,7 +325,10 @@ class _ActivityTile extends StatelessWidget {
 
   Border? _getSeverityBorder() {
     if (activity.severity == 'critical') {
-      return Border.all(color: AppColors.severityCritical.withOpacity(0.5), width: 1);
+      return Border.all(
+        color: AppColors.severityCritical.withOpacity(0.5),
+        width: 1,
+      );
     }
     return null;
   }

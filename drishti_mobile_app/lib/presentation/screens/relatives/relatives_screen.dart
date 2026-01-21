@@ -1,5 +1,5 @@
 /// Drishti App - Relatives Screen
-/// 
+///
 /// Known persons list with CRUD operations.
 library;
 
@@ -26,7 +26,7 @@ class RelativesScreen extends StatefulWidget {
 class _RelativesScreenState extends State<RelativesScreen> {
   final StorageService _storage = StorageService();
   final VoiceService _voiceService = VoiceService();
-  
+
   List<RelativeModel> _relatives = [];
   bool _isLoading = true;
   String _sortBy = 'name';
@@ -50,12 +50,12 @@ class _RelativesScreenState extends State<RelativesScreen> {
 
   Future<void> _loadRelatives() async {
     setState(() => _isLoading = true);
-    
+
     // Load from local storage
     _relatives = _storage.getCachedRelatives();
-    
+
     // TODO: Fetch from API and sync
-    
+
     setState(() => _isLoading = false);
   }
 
@@ -156,9 +156,9 @@ class _RelativesScreenState extends State<RelativesScreen> {
                     child: Text(
                       AppStrings.relatives,
                       style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primaryBlue,
-                          ),
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryBlue,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -172,9 +172,7 @@ class _RelativesScreenState extends State<RelativesScreen> {
                     tooltip: 'Filter',
                   ),
                 ],
-              )
-                  .animate()
-                  .fadeIn(duration: 300.ms),
+              ).animate().fadeIn(duration: 300.ms),
             ),
 
             // Sort options
@@ -204,9 +202,7 @@ class _RelativesScreenState extends State<RelativesScreen> {
                   ),
                 ],
               ),
-            )
-                .animate()
-                .fadeIn(delay: 100.ms, duration: 300.ms),
+            ).animate().fadeIn(delay: 100.ms, duration: 300.ms),
 
             const SizedBox(height: 16),
 
@@ -215,40 +211,43 @@ class _RelativesScreenState extends State<RelativesScreen> {
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : _relatives.isEmpty
-                      ? _buildEmptyState()
-                      : ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          itemCount: _relatives.length,
-                          itemBuilder: (context, index) {
-                            final relative = _relatives[index];
-                            return PersonCard(
+                  ? _buildEmptyState()
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      itemCount: _relatives.length,
+                      itemBuilder: (context, index) {
+                        final relative = _relatives[index];
+                        return PersonCard(
                               relative: relative,
                               onTap: () => _editRelative(relative),
                               onEdit: () => _editRelative(relative),
                               onDelete: () => _deleteRelative(relative),
                             )
-                                .animate()
-                                .fadeIn(
-                                  delay: Duration(milliseconds: 200 + (index * 100)),
-                                  duration: 300.ms,
-                                )
-                                .slideX(begin: 0.1, end: 0);
-                          },
-                        ),
+                            .animate()
+                            .fadeIn(
+                              delay: Duration(
+                                milliseconds: 200 + (index * 100),
+                              ),
+                              duration: 300.ms,
+                            )
+                            .slideX(begin: 0.1, end: 0);
+                      },
+                    ),
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _addRelative,
-        icon: const Icon(Icons.add),
-        label: const Text(AppStrings.addRelative),
-        backgroundColor: AppColors.primaryBlue,
-        foregroundColor: Colors.white,
-      )
-          .animate()
-          .fadeIn(delay: 500.ms, duration: 300.ms)
-          .slideY(begin: 0.5, end: 0),
+      floatingActionButton:
+          FloatingActionButton.extended(
+                onPressed: _addRelative,
+                icon: const Icon(Icons.add),
+                label: const Text(AppStrings.addRelative),
+                backgroundColor: AppColors.primaryBlue,
+                foregroundColor: Colors.white,
+              )
+              .animate()
+              .fadeIn(delay: 500.ms, duration: 300.ms)
+              .slideY(begin: 0.5, end: 0),
     );
   }
 
@@ -334,7 +333,7 @@ class _AddRelativeSheetState extends State<AddRelativeSheet> {
   final _notesController = TextEditingController();
   final StorageService _storage = StorageService();
   final ImagePicker _picker = ImagePicker();
-  
+
   File? _selectedImage;
   String? _localImagePath;
   bool _isLoading = false;
@@ -402,14 +401,24 @@ class _AddRelativeSheetState extends State<AddRelativeSheet> {
     }
 
     final relative = RelativeModel(
-      id: widget.relative?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      id:
+          widget.relative?.id ??
+          DateTime.now().millisecondsSinceEpoch.toString(),
       name: _nameController.text.trim(),
       relationship: _relationshipController.text.trim(),
       addedBy: 'user',
       forUser: 'user',
-      notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+      notes: _notesController.text.trim().isEmpty
+          ? null
+          : _notesController.text.trim(),
       images: savedImagePath != null
-          ? [PersonImage(filename: 'photo.jpg', path: '', localPath: savedImagePath)]
+          ? [
+              PersonImage(
+                filename: 'photo.jpg',
+                path: '',
+                localPath: savedImagePath,
+              ),
+            ]
           : widget.relative?.images ?? [],
     );
 
@@ -440,7 +449,7 @@ class _AddRelativeSheetState extends State<AddRelativeSheet> {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          
+
           // Header
           Padding(
             padding: const EdgeInsets.all(20),
@@ -450,9 +459,9 @@ class _AddRelativeSheetState extends State<AddRelativeSheet> {
                 Text(
                   isEditing ? AppStrings.editRelative : AppStrings.addRelative,
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        color: AppColors.primaryBlue,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    color: AppColors.primaryBlue,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
@@ -515,25 +524,28 @@ class _AddRelativeSheetState extends State<AddRelativeSheet> {
                           child: _selectedImage != null
                               ? Image.file(_selectedImage!, fit: BoxFit.cover)
                               : _localImagePath != null
-                                  ? Image.file(File(_localImagePath!), fit: BoxFit.cover)
-                                  : Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.add_a_photo,
-                                          color: AppColors.primaryBlue,
-                                          size: 32,
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          'Add Photo',
-                                          style: TextStyle(
-                                            color: AppColors.primaryBlue,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ],
+                              ? Image.file(
+                                  File(_localImagePath!),
+                                  fit: BoxFit.cover,
+                                )
+                              : Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.add_a_photo,
+                                      color: AppColors.primaryBlue,
+                                      size: 32,
                                     ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Add Photo',
+                                      style: TextStyle(
+                                        color: AppColors.primaryBlue,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                         ),
                       ),
                     ),

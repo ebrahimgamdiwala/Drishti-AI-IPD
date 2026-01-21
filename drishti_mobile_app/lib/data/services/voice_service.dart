@@ -1,5 +1,5 @@
 /// Drishti App - Voice Service
-/// 
+///
 /// Text-to-speech and speech-to-text for accessibility.
 library;
 
@@ -15,14 +15,14 @@ class VoiceService {
 
   final FlutterTts _tts = FlutterTts();
   final SpeechToText _stt = SpeechToText();
-  
+
   bool _ttsInitialized = false;
   bool _sttInitialized = false;
   bool _isListening = false;
-  
-  double _speechRate = 0.5;  // 0.0 to 1.0
-  double _pitch = 1.0;       // 0.5 to 2.0
-  double _volume = 1.0;      // 0.0 to 1.0
+
+  double _speechRate = 0.5; // 0.0 to 1.0
+  double _pitch = 1.0; // 0.5 to 2.0
+  double _volume = 1.0; // 0.0 to 1.0
 
   /// Initialize TTS engine
   Future<void> initTts() async {
@@ -38,7 +38,7 @@ class VoiceService {
       await _tts.setSpeechRate(_speechRate);
       await _tts.setPitch(_pitch);
       await _tts.setVolume(_volume);
-      
+
       // Set completion handler
       _tts.setCompletionHandler(() {
         // Speech completed
@@ -82,10 +82,10 @@ class VoiceService {
   Future<void> speak(String text) async {
     if (!_ttsInitialized) await initTts();
     if (kIsWeb) return;
-    
+
     // Stop any current speech
     await _tts.stop();
-    
+
     // Speak new text
     await _tts.speak(text);
   }

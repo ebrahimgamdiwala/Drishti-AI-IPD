@@ -1,5 +1,5 @@
 /// Drishti App - Main Shell
-/// 
+///
 /// Bottom navigation container for main screens.
 library;
 
@@ -20,7 +20,7 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
-  
+
   final List<Widget> _screens = const [
     HomeScreen(),
     DashboardScreen(),
@@ -31,21 +31,34 @@ class _MainShellState extends State<MainShell> {
 
   final List<_NavItem> _navItems = const [
     _NavItem(icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Home'),
-    _NavItem(icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard, label: 'Dashboard'),
-    _NavItem(icon: Icons.people_outlined, activeIcon: Icons.people, label: 'Relatives'),
-    _NavItem(icon: Icons.history_outlined, activeIcon: Icons.history, label: 'Activity'),
-    _NavItem(icon: Icons.settings_outlined, activeIcon: Icons.settings, label: 'Settings'),
+    _NavItem(
+      icon: Icons.dashboard_outlined,
+      activeIcon: Icons.dashboard,
+      label: 'Dashboard',
+    ),
+    _NavItem(
+      icon: Icons.people_outlined,
+      activeIcon: Icons.people,
+      label: 'Relatives',
+    ),
+    _NavItem(
+      icon: Icons.history_outlined,
+      activeIcon: Icons.history,
+      label: 'Activity',
+    ),
+    _NavItem(
+      icon: Icons.settings_outlined,
+      activeIcon: Icons.settings,
+      label: 'Settings',
+    ),
   ];
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
+      body: IndexedStack(index: _currentIndex, children: _screens),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: isDark ? AppColors.darkSurface : Colors.white,
@@ -77,7 +90,7 @@ class _MainShellState extends State<MainShell> {
   Widget _buildNavItem(int index, bool isDark) {
     final isSelected = _currentIndex == index;
     final item = _navItems[index];
-    
+
     return Semantics(
       label: item.label,
       selected: isSelected,
@@ -100,7 +113,9 @@ class _MainShellState extends State<MainShell> {
                 isSelected ? item.activeIcon : item.icon,
                 color: isSelected
                     ? AppColors.primaryBlue
-                    : (isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
+                    : (isDark
+                          ? AppColors.textSecondaryDark
+                          : AppColors.textSecondaryLight),
                 size: 26,
               ),
               if (isSelected) ...[

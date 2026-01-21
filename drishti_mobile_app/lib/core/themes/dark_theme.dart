@@ -1,5 +1,5 @@
 /// Drishti App - Dark Theme
-/// 
+///
 /// Dark theme configuration with blue accents.
 library;
 
@@ -10,7 +10,7 @@ import '../constants/app_colors.dart';
 ThemeData darkTheme = ThemeData(
   useMaterial3: true,
   brightness: Brightness.dark,
-  
+
   // Color Scheme
   colorScheme: const ColorScheme.dark(
     primary: AppColors.primaryBlueLight,
@@ -22,10 +22,10 @@ ThemeData darkTheme = ThemeData(
     error: AppColors.error,
     onError: Colors.white,
   ),
-  
+
   // Scaffold
   scaffoldBackgroundColor: AppColors.darkBackground,
-  
+
   // App Bar
   appBarTheme: AppBarTheme(
     backgroundColor: AppColors.darkBackground,
@@ -37,11 +37,9 @@ ThemeData darkTheme = ThemeData(
       fontWeight: FontWeight.w600,
       color: AppColors.primaryBlueLight,
     ),
-    iconTheme: const IconThemeData(
-      color: AppColors.primaryBlueLight,
-    ),
+    iconTheme: const IconThemeData(color: AppColors.primaryBlueLight),
   ),
-  
+
   // Text Theme
   textTheme: TextTheme(
     displayLarge: GoogleFonts.inter(
@@ -95,17 +93,15 @@ ThemeData darkTheme = ThemeData(
       color: Colors.white,
     ),
   ),
-  
+
   // Card Theme
   cardTheme: CardThemeData(
     color: AppColors.darkCard,
     elevation: 4,
     shadowColor: Colors.black.withOpacity(0.3),
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(16),
-    ),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
   ),
-  
+
   // Elevated Button
   elevatedButtonTheme: ElevatedButtonThemeData(
     style: ElevatedButton.styleFrom(
@@ -113,16 +109,11 @@ ThemeData darkTheme = ThemeData(
       foregroundColor: Colors.white,
       elevation: 0,
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-      ),
-      textStyle: GoogleFonts.inter(
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      textStyle: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
     ),
   ),
-  
+
   // Input Decoration
   inputDecorationTheme: InputDecorationTheme(
     filled: true,
@@ -149,7 +140,7 @@ ThemeData darkTheme = ThemeData(
       color: AppColors.textSecondaryDark,
     ),
   ),
-  
+
   // Bottom Navigation
   bottomNavigationBarTheme: const BottomNavigationBarThemeData(
     backgroundColor: AppColors.darkSurface,
@@ -158,20 +149,20 @@ ThemeData darkTheme = ThemeData(
     type: BottomNavigationBarType.fixed,
     elevation: 8,
   ),
-  
+
   // Floating Action Button
   floatingActionButtonTheme: const FloatingActionButtonThemeData(
     backgroundColor: AppColors.primaryBlueLight,
     foregroundColor: Colors.white,
     elevation: 4,
   ),
-  
+
   // Divider
   dividerTheme: const DividerThemeData(
     color: AppColors.darkBorder,
     thickness: 1,
   ),
-  
+
   // Switch
   switchTheme: SwitchThemeData(
     thumbColor: WidgetStateProperty.resolveWith((states) {

@@ -1,5 +1,5 @@
 /// Drishti App - Storage Service
-/// 
+///
 /// Local storage for preferences, cached data, and images.
 library;
 
@@ -23,7 +23,7 @@ class StorageService {
   /// Initialize storage
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
-    
+
     // Web: skip filesystem usage (not supported)
     if (kIsWeb) {
       _appDir = null;
@@ -33,7 +33,7 @@ class StorageService {
 
     _appDir = await getApplicationDocumentsDirectory();
     _imagesDir = Directory('${_appDir!.path}/images');
-    
+
     if (!await _imagesDir!.exists()) {
       await _imagesDir!.create(recursive: true);
     }
@@ -102,7 +102,7 @@ class StorageService {
     try {
       if (kIsWeb) return null; // Skip on web
       if (_imagesDir == null) await init();
-      
+
       final localPath = '${_imagesDir!.path}/$filename';
       await imageFile.copy(localPath);
       return localPath;
@@ -131,13 +131,16 @@ class StorageService {
     try {
       if (kIsWeb) return [];
       if (_imagesDir == null) await init();
-      
-      final files = _imagesDir!.listSync()
+
+      final files = _imagesDir!
+          .listSync()
           .whereType<File>()
-          .where((f) => 
-              f.path.endsWith('.jpg') || 
-              f.path.endsWith('.jpeg') || 
-              f.path.endsWith('.png'))
+          .where(
+            (f) =>
+                f.path.endsWith('.jpg') ||
+                f.path.endsWith('.jpeg') ||
+                f.path.endsWith('.png'),
+          )
           .toList();
       return files;
     } catch (e) {
@@ -180,7 +183,7 @@ class StorageService {
   /// Clear all stored data
   Future<void> clearAll() async {
     await _prefs?.clear();
-    
+
     if (kIsWeb) return;
 
     // Delete all images (mobile/desktop)

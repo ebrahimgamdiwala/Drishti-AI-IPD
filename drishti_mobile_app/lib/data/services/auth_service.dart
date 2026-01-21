@@ -1,5 +1,5 @@
 /// Drishti App - Auth Service
-/// 
+///
 /// Authentication service for login, signup, and Google OAuth.
 library;
 
@@ -15,37 +15,27 @@ class AuthResult {
   final String? token;
   final UserModel? user;
 
-  AuthResult({
-    required this.success,
-    this.message,
-    this.token,
-    this.user,
-  });
+  AuthResult({required this.success, this.message, this.token, this.user});
 }
 
 class AuthService {
   final ApiService _api = ApiService();
   final GoogleSignIn? _googleSignIn = kIsWeb
       ? null
-      : GoogleSignIn(
-          scopes: ['email', 'profile'],
-        );
+      : GoogleSignIn(scopes: ['email', 'profile']);
 
   /// Login with email and password
   Future<AuthResult> login(String email, String password) async {
     try {
       final response = await _api.post(
         ApiEndpoints.login,
-        data: {
-          'email': email,
-          'password': password,
-        },
+        data: {'email': email, 'password': password},
       );
 
       if (response.statusCode == 200) {
         final data = response.data;
         final token = data['token'];
-        
+
         if (token != null) {
           await _api.setToken(token);
         }
@@ -54,9 +44,7 @@ class AuthService {
           success: true,
           message: data['message'] ?? 'Login successful',
           token: token,
-          user: data['user'] != null 
-              ? UserModel.fromJson(data['user']) 
-              : null,
+          user: data['user'] != null ? UserModel.fromJson(data['user']) : null,
         );
       }
 
@@ -65,10 +53,7 @@ class AuthService {
         message: response.data['detail'] ?? 'Login failed',
       );
     } catch (e) {
-      return AuthResult(
-        success: false,
-        message: _parseError(e),
-      );
+      return AuthResult(success: false, message: _parseError(e));
     }
   }
 
@@ -93,7 +78,7 @@ class AuthService {
       if (response.statusCode == 200) {
         final data = response.data;
         final token = data['token'];
-        
+
         if (token != null) {
           await _api.setToken(token);
         }
@@ -102,9 +87,7 @@ class AuthService {
           success: true,
           message: data['message'] ?? 'Signup successful',
           token: token,
-          user: data['user'] != null 
-              ? UserModel.fromJson(data['user']) 
-              : null,
+          user: data['user'] != null ? UserModel.fromJson(data['user']) : null,
         );
       }
 
@@ -113,10 +96,7 @@ class AuthService {
         message: response.data['detail'] ?? 'Signup failed',
       );
     } catch (e) {
-      return AuthResult(
-        success: false,
-        message: _parseError(e),
-      );
+      return AuthResult(success: false, message: _parseError(e));
     }
   }
 
@@ -136,31 +116,25 @@ class AuthService {
     try {
       // Sign out first to allow account selection
       await _googleSignIn.signOut();
-      
+
       final account = await _googleSignIn.signIn();
-      
+
       if (account == null) {
-        return AuthResult(
-          success: false,
-          message: 'Google sign in cancelled',
-        );
+        return AuthResult(success: false, message: 'Google sign in cancelled');
       }
 
       final auth = await account.authentication;
-      
+
       // Send token to backend
       final response = await _api.post(
         ApiEndpoints.googleAuth,
-        data: {
-          'access_token': auth.accessToken,
-          'id_token': auth.idToken,
-        },
+        data: {'access_token': auth.accessToken, 'id_token': auth.idToken},
       );
 
       if (response.statusCode == 200) {
         final data = response.data;
         final token = data['token'];
-        
+
         if (token != null) {
           await _api.setToken(token);
         }
@@ -169,9 +143,7 @@ class AuthService {
           success: true,
           message: data['message'] ?? 'Google sign in successful',
           token: token,
-          user: data['user'] != null 
-              ? UserModel.fromJson(data['user']) 
-              : null,
+          user: data['user'] != null ? UserModel.fromJson(data['user']) : null,
         );
       }
 
@@ -180,10 +152,7 @@ class AuthService {
         message: response.data['detail'] ?? 'Google sign in failed',
       );
     } catch (e) {
-      return AuthResult(
-        success: false,
-        message: _parseError(e),
-      );
+      return AuthResult(success: false, message: _parseError(e));
     }
   }
 
@@ -200,10 +169,7 @@ class AuthService {
         message: response.data['message'] ?? 'Reset email sent',
       );
     } catch (e) {
-      return AuthResult(
-        success: false,
-        message: _parseError(e),
-      );
+      return AuthResult(success: false, message: _parseError(e));
     }
   }
 
