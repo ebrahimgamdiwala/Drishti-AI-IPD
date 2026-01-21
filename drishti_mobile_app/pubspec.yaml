@@ -1,0 +1,60 @@
+name: drishti_mobile_app
+description: "Drishti - Your Vision Companion. Accessibility-first mobile app for visually impaired users."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.7
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # UI & Icons
+  cupertino_icons: ^1.0.8
+  google_fonts: ^6.1.0
+  flutter_svg: ^2.0.9
+  cached_network_image: ^3.3.1
+  shimmer: ^3.0.0
+  
+  # State Management
+  provider: ^6.1.1
+  
+  # Network & API
+  dio: ^5.4.0
+  
+  # Storage
+  shared_preferences: ^2.2.2
+  path_provider: ^2.1.2
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  
+  # Auth
+  google_sign_in: ^6.2.1
+  flutter_secure_storage: ^9.0.0
+  
+  # Accessibility & Voice
+  flutter_tts: ^3.8.5
+  speech_to_text: ^6.6.0
+  
+  # Camera & Images
+  image_picker: ^1.0.7
+  
+  # Animations
+  flutter_animate: ^4.5.0
+  
+  # Utils
+  intl: ^0.19.0
+  permission_handler: ^11.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/images/
+    - assets/icons/

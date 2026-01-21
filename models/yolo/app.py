@@ -25,7 +25,7 @@ class TTSWorker:
     - Coalescing: multiple alerts can be combined into one utterance to reduce verbosity.
     - Cooldowns: respects a global minimum gap between speeches.
     """
-    def __init__(self, min_gap=0.8, engine_rate_delta=25, max_queue_size=50):
+    def __init__(self, min_gap=0.8, engine_rate_delta=15, max_queue_size=50):
         self.queue = queue.Queue(maxsize=max_queue_size)
         self.min_gap = float(min_gap)
         self.engine_rate_delta = engine_rate_delta
@@ -94,9 +94,11 @@ class TTSWorker:
                 try:
                     engine = pyttsx3.init()
                     rate = engine.getProperty('rate')
-                    engine.setProperty('rate', max(80, rate - self.engine_rate_delta))
+                    # Make speech only a little faster by adding a small positive delta.
+                    new_rate = min(400, rate + abs(self.engine_rate_delta))
+                    engine.setProperty('rate', new_rate)
                     
-                    print(f"📢 SPEAKING (queued): {utterance}")
+                    print(f"📢 SPEAKING (queued, rate={new_rate}): {utterance}")
                     engine.say(utterance)
                     
                     # Manually drive the event loop instead of runAndWait()

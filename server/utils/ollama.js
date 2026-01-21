@@ -1,4 +1,7 @@
 import axios from 'axios';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
 const MODEL = process.env.OLLAMA_MODEL || 'llava:7b';
