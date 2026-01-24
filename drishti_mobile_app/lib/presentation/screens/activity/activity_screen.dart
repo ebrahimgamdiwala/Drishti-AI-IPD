@@ -62,6 +62,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Column(
           children: [
@@ -147,7 +148,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
           Icon(
             Icons.history,
             size: 80,
-            color: AppColors.textSecondaryLight.withOpacity(0.5),
+            color: AppColors.textSecondaryLight.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
@@ -171,8 +172,9 @@ class _ActivityScreenState extends State<ActivityScreen> {
   String _getDateHeader(DateTime date) {
     final now = DateTime.now();
     if (_isSameDay(date, now)) return 'Today';
-    if (_isSameDay(date, now.subtract(const Duration(days: 1))))
+    if (_isSameDay(date, now.subtract(const Duration(days: 1)))) {
       return 'Yesterday';
+    }
     return DateFormat('EEEE, MMM d').format(date);
   }
 }
@@ -194,7 +196,7 @@ class _ActivityTile extends StatelessWidget {
         border: _getSeverityBorder(),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -210,7 +212,7 @@ class _ActivityTile extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: _getIconColor().withOpacity(0.1),
+                color: _getIconColor().withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(_getIcon(), color: _getIconColor(), size: 22),
@@ -239,7 +241,7 @@ class _ActivityTile extends StatelessWidget {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: _getSeverityColor().withOpacity(0.1),
+                            color: _getSeverityColor().withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -326,7 +328,7 @@ class _ActivityTile extends StatelessWidget {
   Border? _getSeverityBorder() {
     if (activity.severity == 'critical') {
       return Border.all(
-        color: AppColors.severityCritical.withOpacity(0.5),
+        color: AppColors.severityCritical.withValues(alpha: 0.5),
         width: 1,
       );
     }

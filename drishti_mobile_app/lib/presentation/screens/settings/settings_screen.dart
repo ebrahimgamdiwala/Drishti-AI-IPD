@@ -1,5 +1,5 @@
 /// Drishti App - Settings Screen
-/// 
+///
 /// App settings with light/dark mode toggle.
 library;
 
@@ -23,7 +23,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final VoiceService _voiceService = VoiceService();
-  
+
   double _voiceSpeed = 0.5;
   bool _highContrast = false;
   bool _notifications = true;
@@ -36,11 +36,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final themeProvider = context.watch<ThemeProvider>();
     final user = context.watch<AuthProvider>().user;
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -51,12 +51,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Text(
                 AppStrings.settings,
                 style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primaryBlue,
-                    ),
-              )
-                  .animate()
-                  .fadeIn(duration: 300.ms),
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primaryBlue,
+                ),
+              ).animate().fadeIn(duration: 300.ms),
 
               const SizedBox(height: 24),
 
@@ -71,22 +69,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // Appearance Section
               _buildSectionHeader(AppStrings.appearance),
               const SizedBox(height: 12),
-              
+
               _buildSettingsCard([
                 _ThemeSelector(
                   currentTheme: themeProvider.themeType,
                   onChanged: (type) => themeProvider.setTheme(type),
                 ),
-              ])
-                  .animate()
-                  .fadeIn(delay: 200.ms, duration: 300.ms),
+              ]).animate().fadeIn(delay: 200.ms, duration: 300.ms),
 
               const SizedBox(height: 24),
 
               // Voice Settings
               _buildSectionHeader(AppStrings.voiceSettings),
               const SizedBox(height: 12),
-              
+
               _buildSettingsCard([
                 _SettingSlider(
                   title: AppStrings.voiceSpeed,
@@ -97,16 +93,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     await _voiceService.setSpeechRate(value);
                   },
                 ),
-              ])
-                  .animate()
-                  .fadeIn(delay: 300.ms, duration: 300.ms),
+              ]).animate().fadeIn(delay: 300.ms, duration: 300.ms),
 
               const SizedBox(height: 24),
 
               // Accessibility
               _buildSectionHeader(AppStrings.accessibility),
               const SizedBox(height: 12),
-              
+
               _buildSettingsCard([
                 _SettingToggle(
                   title: AppStrings.highContrast,
@@ -123,16 +117,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   value: false,
                   onChanged: (value) {},
                 ),
-              ])
-                  .animate()
-                  .fadeIn(delay: 400.ms, duration: 300.ms),
+              ]).animate().fadeIn(delay: 400.ms, duration: 300.ms),
 
               const SizedBox(height: 24),
 
               // Notifications
               _buildSectionHeader(AppStrings.notifications),
               const SizedBox(height: 12),
-              
+
               _buildSettingsCard([
                 _SettingToggle(
                   title: 'Alert Notifications',
@@ -142,9 +134,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     setState(() => _notifications = value);
                   },
                 ),
-              ])
-                  .animate()
-                  .fadeIn(delay: 500.ms, duration: 300.ms),
+              ]).animate().fadeIn(delay: 500.ms, duration: 300.ms),
 
               const SizedBox(height: 24),
 
@@ -167,9 +157,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: AppStrings.privacyPolicy,
                   onTap: () {},
                 ),
-              ])
-                  .animate()
-                  .fadeIn(delay: 600.ms, duration: 300.ms),
+              ]).animate().fadeIn(delay: 600.ms, duration: 300.ms),
 
               const SizedBox(height: 24),
 
@@ -181,9 +169,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   isDestructive: true,
                   onTap: () => _handleLogout(context),
                 ),
-              ])
-                  .animate()
-                  .fadeIn(delay: 700.ms, duration: 300.ms),
+              ]).animate().fadeIn(delay: 700.ms, duration: 300.ms),
 
               const SizedBox(height: 40),
             ],
@@ -195,7 +181,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildProfileCard(String name, String email) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -210,7 +196,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primaryBlue.withOpacity(0.1),
+              color: AppColors.primaryBlue.withValues(alpha: 0.1),
               blurRadius: 20,
               offset: const Offset(0, 4),
             ),
@@ -224,13 +210,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: AppColors.primaryBlue.withOpacity(0.2),
+                  color: AppColors.primaryBlue.withValues(alpha: 0.2),
                   width: 2,
                 ),
               ),
               child: ClipOval(
                 child: Container(
-                  color: AppColors.primaryBlue.withOpacity(0.1),
+                  color: AppColors.primaryBlue.withValues(alpha: 0.1),
                   child: const Icon(
                     Icons.person,
                     color: AppColors.primaryBlue,
@@ -247,13 +233,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Text(
                     name,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                  Text(
-                    email,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
+                  Text(email, style: Theme.of(context).textTheme.bodyMedium),
                 ],
               ),
             ),
@@ -268,22 +251,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Text(
       title,
       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: AppColors.textSecondaryLight,
-          ),
+        fontWeight: FontWeight.w600,
+        color: AppColors.textSecondaryLight,
+      ),
     );
   }
 
   Widget _buildSettingsCard(List<Widget> children) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Container(
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkCard : AppColors.lightCard,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -301,18 +284,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _handleLogout(BuildContext context) async {
+    // Capture references before async gap
+    final authProvider = context.read<AuthProvider>();
+    final navigator = Navigator.of(context);
+
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: const Text('Logout'),
         content: const Text('Are you sure you want to logout?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
             child: const Text('Logout'),
           ),
@@ -321,8 +308,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (confirm == true && mounted) {
-      await context.read<AuthProvider>().logout();
-      Navigator.pushReplacementNamed(context, AppRoutes.login);
+      await authProvider.logout();
+      if (!mounted) return;
+      navigator.pushReplacementNamed(AppRoutes.login);
     }
   }
 }
@@ -332,10 +320,7 @@ class _ThemeSelector extends StatelessWidget {
   final ThemeType currentTheme;
   final ValueChanged<ThemeType> onChanged;
 
-  const _ThemeSelector({
-    required this.currentTheme,
-    required this.onChanged,
-  });
+  const _ThemeSelector({required this.currentTheme, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -346,9 +331,9 @@ class _ThemeSelector extends StatelessWidget {
         children: [
           Text(
             'Theme',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 12),
           Row(
@@ -403,13 +388,11 @@ class _ThemeOption extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             color: isSelected
-                ? AppColors.primaryBlue.withOpacity(0.1)
+                ? AppColors.primaryBlue.withValues(alpha: 0.1)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isSelected
-                  ? AppColors.primaryBlue
-                  : AppColors.lightBorder,
+              color: isSelected ? AppColors.primaryBlue : AppColors.lightBorder,
               width: isSelected ? 2 : 1,
             ),
           ),
@@ -467,20 +450,17 @@ class _SettingToggle extends StatelessWidget {
                 Text(
                   title,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-                Text(
-                  subtitle,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
+                Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
               ],
             ),
           ),
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: AppColors.primaryBlue,
+            activeThumbColor: AppColors.primaryBlue,
           ),
         ],
       ),
@@ -514,16 +494,16 @@ class _SettingSlider extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500),
               ),
               Text(
                 subtitle,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.primaryBlue,
-                      fontWeight: FontWeight.w500,
-                    ),
+                  color: AppColors.primaryBlue,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),
@@ -533,12 +513,9 @@ class _SettingSlider extends StatelessWidget {
               activeTrackColor: AppColors.primaryBlue,
               inactiveTrackColor: AppColors.lightBorder,
               thumbColor: AppColors.primaryBlue,
-              overlayColor: AppColors.primaryBlue.withOpacity(0.2),
+              overlayColor: AppColors.primaryBlue.withValues(alpha: 0.2),
             ),
-            child: Slider(
-              value: value,
-              onChanged: onChanged,
-            ),
+            child: Slider(value: value, onChanged: onChanged),
           ),
         ],
       ),
@@ -568,10 +545,7 @@ class _SettingTile extends StatelessWidget {
       leading: Icon(icon, color: color),
       title: Text(
         title,
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.w500,
-        ),
+        style: TextStyle(color: color, fontWeight: FontWeight.w500),
       ),
       trailing: const Icon(Icons.chevron_right),
       onTap: onTap,

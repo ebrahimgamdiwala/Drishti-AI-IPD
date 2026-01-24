@@ -1,5 +1,5 @@
 /// Drishti App - Stats Card
-/// 
+///
 /// Dashboard stat card with icon and value.
 library;
 
@@ -27,16 +27,18 @@ class StatsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Semantics(
       label: '$title: $value',
       child: Container(
         decoration: BoxDecoration(
-          color: backgroundColor ?? (isDark ? AppColors.darkCard : AppColors.lightCard),
+          color:
+              backgroundColor ??
+              (isDark ? AppColors.darkCard : AppColors.lightCard),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primaryBlue.withOpacity(0.08),
+              color: AppColors.primaryBlue.withValues(alpha: 0.08),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),
@@ -58,7 +60,9 @@ class StatsCard extends StatelessWidget {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: (iconColor ?? AppColors.primaryBlue).withOpacity(0.1),
+                      color: (iconColor ?? AppColors.primaryBlue).withValues(
+                        alpha: 0.1,
+                      ),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -67,24 +71,21 @@ class StatsCard extends StatelessWidget {
                       size: 24,
                     ),
                   ),
-                  
+
                   const SizedBox(height: 12),
-                  
+
                   // Value
                   Text(
                     value,
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  
+
                   const SizedBox(height: 4),
-                  
+
                   // Title
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
+                  Text(title, style: Theme.of(context).textTheme.bodyMedium),
                 ],
               ),
             ),

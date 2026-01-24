@@ -1,5 +1,5 @@
 /// Drishti App - Home Screen
-/// 
+///
 /// Voice scan interface with microphone button.
 library;
 
@@ -18,7 +18,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   final VoiceService _voiceService = VoiceService();
   bool _isListening = false;
   bool _isProcessing = false;
@@ -38,10 +39,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Future<void> _initVoice() async {
     await _voiceService.initTts();
     await _voiceService.initStt();
-    
+
     // Announce screen on first load
     Future.delayed(const Duration(milliseconds: 500), () {
-      _voiceService.speak('Home screen. Tap the large button to speak a command or scan your surroundings.');
+      _voiceService.speak(
+        'Home screen. Tap the large button to speak a command or scan your surroundings.',
+      );
     });
   }
 
@@ -79,10 +82,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             _statusText = AppStrings.processing;
           });
           _pulseController.stop();
-          
+
           // Process the voice command
           await _processCommand(text);
-          
+
           setState(() {
             _isProcessing = false;
             _statusText = AppStrings.tapToSpeak;
@@ -94,7 +97,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             _statusText = AppStrings.tapToSpeak;
           });
           _pulseController.stop();
-          _voiceService.speak('Sorry, I could not understand. Please try again.');
+          _voiceService.speak(
+            'Sorry, I could not understand. Please try again.',
+          );
         },
       );
     }
@@ -103,28 +108,28 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Future<void> _processCommand(String command) async {
     // TODO: Send to backend for processing
     await _voiceService.speak('I heard: $command. Processing your request.');
-    
+
     // Simulate processing
     await Future.delayed(const Duration(seconds: 2));
-    
+
     await _voiceService.speak('Command processed successfully.');
   }
 
   Future<void> _handleQuickScan() async {
     if (_isProcessing) return;
-    
+
     setState(() {
       _isProcessing = true;
       _statusText = 'Scanning...';
     });
-    
+
     await _voiceService.speak('Starting quick scan of your surroundings.');
-    
+
     // TODO: Capture camera and send to backend
     await Future.delayed(const Duration(seconds: 2));
-    
+
     await _voiceService.speak('Scan complete. No obstacles detected ahead.');
-    
+
     setState(() {
       _isProcessing = false;
       _statusText = AppStrings.tapToSpeak;
@@ -133,10 +138,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final user = context.watch<AuthProvider>().user;
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Column(
           children: [
@@ -152,13 +157,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: AppColors.primaryBlue.withOpacity(0.2),
+                        color: AppColors.primaryBlue.withValues(alpha: 0.2),
                         width: 2,
                       ),
                     ),
                     child: ClipOval(
                       child: Container(
-                        color: AppColors.primaryBlue.withOpacity(0.1),
+                        color: AppColors.primaryBlue.withValues(alpha: 0.1),
                         child: const Icon(
                           Icons.person,
                           color: AppColors.primaryBlue,
@@ -167,9 +172,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       ),
                     ),
                   ),
-                  
+
                   const SizedBox(width: 12),
-                  
+
                   // Greeting
                   Expanded(
                     child: Column(
@@ -181,19 +186,21 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         ),
                         Text(
                           user?.name ?? 'User',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
                   ),
-                  
+
                   // Connection status
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
-                      color: AppColors.success.withOpacity(0.1),
+                      color: AppColors.success.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -220,75 +227,78 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     ),
                   ),
                 ],
-              )
-                  .animate()
-                  .fadeIn(duration: 500.ms)
-                  .slideY(begin: -0.2, end: 0),
+              ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.2, end: 0),
             ),
 
             const Spacer(),
 
             // Microphone button
             GestureDetector(
-              onTap: _handleMicTap,
-              child: Semantics(
-                label: AppStrings.microphoneButton,
-                button: true,
-                child: AnimatedBuilder(
-                  animation: _pulseController,
-                  builder: (context, child) {
-                    return Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // Outer pulse ring (only when listening)
-                        if (_isListening)
-                          Transform.scale(
-                            scale: 1.0 + (_pulseController.value * 0.4),
-                            child: Container(
-                              width: 140,
-                              height: 140,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: AppColors.gradientStart.withOpacity(
-                                    1.0 - _pulseController.value,
+                  onTap: _handleMicTap,
+                  child: Semantics(
+                    label: AppStrings.microphoneButton,
+                    button: true,
+                    child: AnimatedBuilder(
+                      animation: _pulseController,
+                      builder: (context, child) {
+                        return Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            // Outer pulse ring (only when listening)
+                            if (_isListening)
+                              Transform.scale(
+                                scale: 1.0 + (_pulseController.value * 0.4),
+                                child: Container(
+                                  width: 140,
+                                  height: 140,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: AppColors.gradientStart.withValues(
+                                        alpha: 1.0 - _pulseController.value,
+                                      ),
+                                      width: 3,
+                                    ),
                                   ),
-                                  width: 3,
                                 ),
                               ),
-                            ),
-                          ),
-                        
-                        // Main button
-                        Container(
-                          width: 120,
-                          height: 120,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: AppColors.primaryGradient,
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.primaryBlue.withOpacity(0.4),
-                                blurRadius: 20,
-                                offset: const Offset(0, 8),
+
+                            // Main button
+                            Container(
+                              width: 120,
+                              height: 120,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: AppColors.primaryGradient,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.primaryBlue.withValues(
+                                      alpha: 0.4,
+                                    ),
+                                    blurRadius: 20,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                          child: Icon(
-                            _isListening ? Icons.mic : Icons.mic_none,
-                            color: Colors.white,
-                            size: 50,
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            )
+                              child: Icon(
+                                _isListening ? Icons.mic : Icons.mic_none,
+                                color: Colors.white,
+                                size: 50,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                )
                 .animate()
                 .fadeIn(delay: 200.ms, duration: 500.ms)
-                .scale(begin: const Offset(0.8, 0.8), end: const Offset(1, 1), curve: Curves.easeOutBack),
+                .scale(
+                  begin: const Offset(0.8, 0.8),
+                  end: const Offset(1, 1),
+                  curve: Curves.easeOutBack,
+                ),
 
             const SizedBox(height: 24),
 
@@ -296,11 +306,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             Text(
               _statusText,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: _isListening ? AppColors.primaryBlue : null,
-                  ),
-            )
-                .animate()
-                .fadeIn(delay: 300.ms, duration: 300.ms),
+                color: _isListening ? AppColors.primaryBlue : null,
+              ),
+            ).animate().fadeIn(delay: 300.ms, duration: 300.ms),
 
             const SizedBox(height: 16),
 
@@ -314,51 +322,51 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 label: const Text(AppStrings.quickScan),
                 style: TextButton.styleFrom(
                   foregroundColor: AppColors.primaryBlue,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
                 ),
               ),
-            )
-                .animate()
-                .fadeIn(delay: 400.ms, duration: 300.ms),
+            ).animate().fadeIn(delay: 400.ms, duration: 300.ms),
 
             const Spacer(),
 
             // Quick tips
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Quick Tips',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Quick Tips',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        height: 80,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          children: [
+                            _TipCard(
+                              text: 'Say: "Show obstacles"',
+                              icon: Icons.remove_red_eye,
+                            ),
+                            _TipCard(
+                              text: 'Say: "Who is near?"',
+                              icon: Icons.people,
+                            ),
+                            _TipCard(
+                              text: 'Say: "Read text"',
+                              icon: Icons.text_fields,
+                            ),
+                          ],
                         ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 80,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      children: [
-                        _TipCard(
-                          text: 'Say: "Show obstacles"',
-                          icon: Icons.remove_red_eye,
-                        ),
-                        _TipCard(
-                          text: 'Say: "Who is near?"',
-                          icon: Icons.people,
-                        ),
-                        _TipCard(
-                          text: 'Say: "Read text"',
-                          icon: Icons.text_fields,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            )
+                )
                 .animate()
                 .fadeIn(delay: 500.ms, duration: 500.ms)
                 .slideY(begin: 0.2, end: 0),
@@ -380,31 +388,25 @@ class _TipCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Container(
       margin: const EdgeInsets.only(right: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkCard : AppColors.lightCard,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.primaryBlue.withOpacity(0.1),
-        ),
+        border: Border.all(color: AppColors.primaryBlue.withValues(alpha: 0.1)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            color: AppColors.primaryBlue,
-            size: 20,
-          ),
+          Icon(icon, color: AppColors.primaryBlue, size: 20),
           const SizedBox(width: 12),
           Text(
             text,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
           ),
         ],
       ),

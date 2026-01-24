@@ -1,5 +1,5 @@
 /// Drishti App - Dashboard Screen
-/// 
+///
 /// Stats cards overview matching UI reference.
 library;
 
@@ -27,9 +27,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -43,9 +42,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Text(
                     AppStrings.dashboard,
                     style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primaryBlue,
-                        ),
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primaryBlue,
+                    ),
                   ),
                   IconButton(
                     onPressed: () {
@@ -55,25 +54,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     tooltip: 'Refresh',
                   ),
                 ],
-              )
-                  .animate()
-                  .fadeIn(duration: 300.ms),
+              ).animate().fadeIn(duration: 300.ms),
 
               const SizedBox(height: 8),
 
               Text(
                 AppStrings.todayStats,
                 style: Theme.of(context).textTheme.bodyMedium,
-              )
-                  .animate()
-                  .fadeIn(delay: 100.ms, duration: 300.ms),
+              ).animate().fadeIn(delay: 100.ms, duration: 300.ms),
 
               const SizedBox(height: 24),
 
               // Date selector (horizontal scroll)
-              _buildDateSelector()
-                  .animate()
-                  .fadeIn(delay: 200.ms, duration: 300.ms),
+              _buildDateSelector().animate().fadeIn(
+                delay: 200.ms,
+                duration: 300.ms,
+              ),
 
               const SizedBox(height: 24),
 
@@ -87,38 +83,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 childAspectRatio: 1.1,
                 children: [
                   StatsCard(
-                    title: AppStrings.batteryLevel,
-                    value: '${_stats['battery']}%',
-                    icon: Icons.battery_charging_full,
-                    iconColor: _stats['battery'] > 50
-                        ? AppColors.success
-                        : AppColors.warning,
-                  ).animate().fadeIn(delay: 300.ms, duration: 300.ms).slideY(begin: 0.2, end: 0),
-                  
+                        title: AppStrings.batteryLevel,
+                        value: '${_stats['battery']}%',
+                        icon: Icons.battery_charging_full,
+                        iconColor: _stats['battery'] > 50
+                            ? AppColors.success
+                            : AppColors.warning,
+                      )
+                      .animate()
+                      .fadeIn(delay: 300.ms, duration: 300.ms)
+                      .slideY(begin: 0.2, end: 0),
+
                   StatsCard(
-                    title: AppStrings.connectionStatus,
-                    value: _stats['connection'] ? 'Connected' : 'Offline',
-                    icon: _stats['connection']
-                        ? Icons.wifi
-                        : Icons.wifi_off,
-                    iconColor: _stats['connection']
-                        ? AppColors.success
-                        : AppColors.error,
-                  ).animate().fadeIn(delay: 400.ms, duration: 300.ms).slideY(begin: 0.2, end: 0),
-                  
+                        title: AppStrings.connectionStatus,
+                        value: _stats['connection'] ? 'Connected' : 'Offline',
+                        icon: _stats['connection']
+                            ? Icons.wifi
+                            : Icons.wifi_off,
+                        iconColor: _stats['connection']
+                            ? AppColors.success
+                            : AppColors.error,
+                      )
+                      .animate()
+                      .fadeIn(delay: 400.ms, duration: 300.ms)
+                      .slideY(begin: 0.2, end: 0),
+
                   StatsCard(
-                    title: AppStrings.alertsToday,
-                    value: '${_stats['alerts']}',
-                    icon: Icons.warning_amber,
-                    iconColor: AppColors.warning,
-                  ).animate().fadeIn(delay: 500.ms, duration: 300.ms).slideY(begin: 0.2, end: 0),
-                  
+                        title: AppStrings.alertsToday,
+                        value: '${_stats['alerts']}',
+                        icon: Icons.warning_amber,
+                        iconColor: AppColors.warning,
+                      )
+                      .animate()
+                      .fadeIn(delay: 500.ms, duration: 300.ms)
+                      .slideY(begin: 0.2, end: 0),
+
                   StatsCard(
-                    title: AppStrings.interactions,
-                    value: '${_stats['interactions']}',
-                    icon: Icons.touch_app,
-                    iconColor: AppColors.primaryBlue,
-                  ).animate().fadeIn(delay: 600.ms, duration: 300.ms).slideY(begin: 0.2, end: 0),
+                        title: AppStrings.interactions,
+                        value: '${_stats['interactions']}',
+                        icon: Icons.touch_app,
+                        iconColor: AppColors.primaryBlue,
+                      )
+                      .animate()
+                      .fadeIn(delay: 600.ms, duration: 300.ms)
+                      .slideY(begin: 0.2, end: 0),
                 ],
               ),
 
@@ -127,12 +135,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               // Recent Activity Section
               Text(
                 'Recent Activity',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-              )
-                  .animate()
-                  .fadeIn(delay: 700.ms, duration: 300.ms),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+              ).animate().fadeIn(delay: 700.ms, duration: 300.ms),
 
               const SizedBox(height: 16),
 
@@ -143,14 +149,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Icons.remove_red_eye,
                 AppColors.warning,
               ).animate().fadeIn(delay: 800.ms, duration: 300.ms),
-              
+
               _buildActivityItem(
                 'Voice command processed',
                 '15 min ago',
                 Icons.mic,
                 AppColors.primaryBlue,
               ).animate().fadeIn(delay: 900.ms, duration: 300.ms),
-              
+
               _buildActivityItem(
                 'Person identified: John',
                 '1 hour ago',
@@ -177,7 +183,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         itemBuilder: (context, index) {
           final day = days[index];
           final isToday = day.day == today.day;
-          
+
           return Container(
             margin: const EdgeInsets.only(right: 12),
             width: 55,
@@ -206,7 +212,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
                     color: isToday
-                        ? Colors.white.withOpacity(0.8)
+                        ? Colors.white.withValues(alpha: 0.8)
                         : AppColors.textSecondaryLight,
                   ),
                 ),
@@ -239,7 +245,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: color, size: 22),
@@ -249,14 +255,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                Text(
-                  time,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
+                Text(title, style: Theme.of(context).textTheme.titleMedium),
+                Text(time, style: Theme.of(context).textTheme.bodySmall),
               ],
             ),
           ),

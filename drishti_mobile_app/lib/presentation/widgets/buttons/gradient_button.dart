@@ -1,5 +1,5 @@
 /// Drishti App - Gradient Button
-/// 
+///
 /// Primary action button with gradient background.
 library;
 
@@ -43,7 +43,7 @@ class GradientButton extends StatelessWidget {
           boxShadow: onPressed != null && !isLoading
               ? [
                   BoxShadow(
-                    color: AppColors.primaryBlue.withOpacity(0.3),
+                    color: AppColors.primaryBlue.withValues(alpha: 0.3),
                     blurRadius: 12,
                     offset: const Offset(0, 6),
                   ),

@@ -1,5 +1,5 @@
 /// Drishti App - Person Card
-/// 
+///
 /// Card widget for displaying relative/known person info.
 library;
 
@@ -27,9 +27,10 @@ class PersonCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Semantics(
-      label: '${relative.name}, ${relative.relationship}. ${relative.hasFaceEmbeddings ? "Face registered" : "No face registered"}',
+      label:
+          '${relative.name}, ${relative.relationship}. ${relative.hasFaceEmbeddings ? "Face registered" : "No face registered"}',
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
@@ -37,7 +38,7 @@ class PersonCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primaryBlue.withOpacity(0.08),
+              color: AppColors.primaryBlue.withValues(alpha: 0.08),
               blurRadius: 20,
               offset: const Offset(0, 4),
             ),
@@ -54,9 +55,9 @@ class PersonCard extends StatelessWidget {
                 children: [
                   // Avatar
                   _buildAvatar(isDark),
-                  
+
                   const SizedBox(width: 16),
-                  
+
                   // Info
                   Expanded(
                     child: Column(
@@ -65,21 +66,22 @@ class PersonCard extends StatelessWidget {
                         // Name
                         Text(
                           relative.name,
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
                                 color: AppColors.primaryBlue,
                                 fontWeight: FontWeight.w600,
                               ),
                         ),
                         const SizedBox(height: 4),
-                        
+
                         // Relationship
                         Text(
                           relative.relationship,
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
-                        
+
                         const SizedBox(height: 8),
-                        
+
                         // Status and action buttons
                         Row(
                           children: [
@@ -91,8 +93,8 @@ class PersonCard extends StatelessWidget {
                               ),
                               decoration: BoxDecoration(
                                 color: relative.hasFaceEmbeddings
-                                    ? AppColors.success.withOpacity(0.1)
-                                    : AppColors.warning.withOpacity(0.1),
+                                    ? AppColors.success.withValues(alpha: 0.1)
+                                    : AppColors.warning.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Row(
@@ -109,7 +111,9 @@ class PersonCard extends StatelessWidget {
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
-                                    relative.hasFaceEmbeddings ? 'Registered' : 'Not Registered',
+                                    relative.hasFaceEmbeddings
+                                        ? 'Registered'
+                                        : 'Not Registered',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: relative.hasFaceEmbeddings
@@ -126,7 +130,7 @@ class PersonCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  
+
                   // Action buttons
                   Column(
                     children: [
@@ -156,7 +160,7 @@ class PersonCard extends StatelessWidget {
     // Check for local image first
     final hasImage = relative.images.isNotEmpty;
     final localPath = hasImage ? relative.images.first.localPath : null;
-    
+
     return Container(
       width: 80,
       height: 80,
@@ -164,12 +168,12 @@ class PersonCard extends StatelessWidget {
         shape: BoxShape.circle,
         gradient: !hasImage ? AppColors.cardGradient : null,
         border: Border.all(
-          color: AppColors.primaryBlue.withOpacity(0.2),
+          color: AppColors.primaryBlue.withValues(alpha: 0.2),
           width: 3,
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryBlue.withOpacity(0.15),
+            color: AppColors.primaryBlue.withValues(alpha: 0.15),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -177,17 +181,14 @@ class PersonCard extends StatelessWidget {
       ),
       child: ClipOval(
         child: localPath != null && File(localPath).existsSync()
-            ? Image.file(
-                File(localPath),
-                fit: BoxFit.cover,
-              )
+            ? Image.file(File(localPath), fit: BoxFit.cover)
             : hasImage
-                ? Image.network(
-                    relative.images.first.path,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _buildPlaceholder(),
-                  )
-                : _buildPlaceholder(),
+            ? Image.network(
+                relative.images.first.path,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => _buildPlaceholder(),
+              )
+            : _buildPlaceholder(),
       ),
     );
   }
@@ -231,14 +232,10 @@ class _ActionButton extends StatelessWidget {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: AppColors.primaryBlue.withOpacity(0.1),
+            color: AppColors.primaryBlue.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(
-            icon,
-            size: 18,
-            color: AppColors.primaryBlue,
-          ),
+          child: Icon(icon, size: 18, color: AppColors.primaryBlue),
         ),
       ),
     );

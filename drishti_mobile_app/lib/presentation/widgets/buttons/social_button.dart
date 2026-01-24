@@ -1,5 +1,5 @@
 /// Drishti App - Social Button
-/// 
+///
 /// Circular social login button.
 library;
 
@@ -23,7 +23,7 @@ class SocialButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Semantics(
       button: true,
       label: 'Sign in with $label',
@@ -44,17 +44,13 @@ class SocialButton extends StatelessWidget {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
               ],
             ),
-            child: Icon(
-              icon,
-              size: size * 0.5,
-              color: AppColors.primaryBlue,
-            ),
+            child: Icon(icon, size: size * 0.5, color: AppColors.primaryBlue),
           ),
         ),
       ),

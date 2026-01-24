@@ -144,6 +144,7 @@ class _RelativesScreenState extends State<RelativesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Column(
           children: [
@@ -259,7 +260,7 @@ class _RelativesScreenState extends State<RelativesScreen> {
           Icon(
             Icons.people_outline,
             size: 80,
-            color: AppColors.textSecondaryLight.withOpacity(0.5),
+            color: AppColors.textSecondaryLight.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
@@ -423,6 +424,7 @@ class _AddRelativeSheetState extends State<AddRelativeSheet> {
     );
 
     setState(() => _isLoading = false);
+    if (!mounted) return;
     Navigator.pop(context, relative);
   }
 
@@ -516,7 +518,7 @@ class _AddRelativeSheetState extends State<AddRelativeSheet> {
                           color: AppColors.lightInputFill,
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: AppColors.primaryBlue.withOpacity(0.3),
+                            color: AppColors.primaryBlue.withValues(alpha: 0.3),
                             width: 3,
                           ),
                         ),

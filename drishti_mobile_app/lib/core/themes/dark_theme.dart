@@ -1,9 +1,10 @@
 /// Drishti App - Dark Theme
 ///
-/// Dark theme configuration with blue accents.
+/// iOS-inspired glassmorphism dark theme.
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../constants/app_colors.dart';
 
@@ -11,171 +12,225 @@ ThemeData darkTheme = ThemeData(
   useMaterial3: true,
   brightness: Brightness.dark,
 
-  // Color Scheme
+  // Color Scheme - iOS style
   colorScheme: const ColorScheme.dark(
     primary: AppColors.primaryBlueLight,
-    onPrimary: Colors.white,
-    secondary: AppColors.gradientEnd,
+    onPrimary: Colors.black,
+    secondary: AppColors.primaryBlue,
     onSecondary: Colors.white,
     surface: AppColors.darkSurface,
     onSurface: AppColors.textPrimaryDark,
     error: AppColors.error,
     onError: Colors.white,
+    surfaceContainerHighest: AppColors.glassDarkSurface,
   ),
 
-  // Scaffold
-  scaffoldBackgroundColor: AppColors.darkBackground,
+  // Scaffold - Gradient background
+  scaffoldBackgroundColor: Colors.transparent,
 
-  // App Bar
+  // App Bar - Glassmorphism
   appBarTheme: AppBarTheme(
-    backgroundColor: AppColors.darkBackground,
+    backgroundColor: Colors.transparent,
     foregroundColor: AppColors.textPrimaryDark,
     elevation: 0,
     centerTitle: true,
+    scrolledUnderElevation: 0,
+    systemOverlayStyle: SystemUiOverlayStyle.light,
     titleTextStyle: GoogleFonts.inter(
       fontSize: 20,
       fontWeight: FontWeight.w600,
       color: AppColors.primaryBlueLight,
+      letterSpacing: 0.5,
     ),
-    iconTheme: const IconThemeData(color: AppColors.primaryBlueLight),
+    iconTheme: const IconThemeData(color: AppColors.primaryBlueLight, size: 24),
   ),
 
-  // Text Theme
+  // Text Theme - SF Pro inspired
   textTheme: TextTheme(
     displayLarge: GoogleFonts.inter(
-      fontSize: 32,
+      fontSize: 34,
       fontWeight: FontWeight.bold,
       color: AppColors.textPrimaryDark,
+      letterSpacing: 0.4,
     ),
     displayMedium: GoogleFonts.inter(
       fontSize: 28,
       fontWeight: FontWeight.bold,
       color: AppColors.textPrimaryDark,
+      letterSpacing: 0.4,
     ),
     displaySmall: GoogleFonts.inter(
       fontSize: 24,
       fontWeight: FontWeight.bold,
       color: AppColors.textPrimaryDark,
+      letterSpacing: 0.4,
     ),
     headlineMedium: GoogleFonts.inter(
       fontSize: 20,
       fontWeight: FontWeight.w600,
       color: AppColors.textPrimaryDark,
+      letterSpacing: 0.4,
     ),
     headlineSmall: GoogleFonts.inter(
       fontSize: 18,
       fontWeight: FontWeight.w600,
       color: AppColors.textPrimaryDark,
+      letterSpacing: 0.4,
     ),
     titleLarge: GoogleFonts.inter(
-      fontSize: 16,
+      fontSize: 17,
       fontWeight: FontWeight.w600,
       color: AppColors.textPrimaryDark,
+      letterSpacing: 0.4,
     ),
     titleMedium: GoogleFonts.inter(
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: FontWeight.w500,
       color: AppColors.textPrimaryDark,
+      letterSpacing: 0.2,
     ),
     bodyLarge: GoogleFonts.inter(
-      fontSize: 16,
+      fontSize: 17,
       fontWeight: FontWeight.normal,
       color: AppColors.textPrimaryDark,
+      letterSpacing: 0.2,
     ),
     bodyMedium: GoogleFonts.inter(
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: FontWeight.normal,
       color: AppColors.textSecondaryDark,
+      letterSpacing: 0.2,
     ),
     labelLarge: GoogleFonts.inter(
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: FontWeight.w600,
       color: Colors.white,
+      letterSpacing: 0.4,
     ),
   ),
 
-  // Card Theme
+  // Card Theme - Glassmorphism
   cardTheme: CardThemeData(
-    color: AppColors.darkCard,
-    elevation: 4,
-    shadowColor: Colors.black.withOpacity(0.3),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    color: AppColors.glassDarkSurface,
+    elevation: 0,
+    shadowColor: Colors.transparent,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppColors.radiusMedium),
+      side: BorderSide(color: AppColors.glassDarkBorder, width: 1.5),
+    ),
   ),
 
-  // Elevated Button
+  // Elevated Button - iOS style
   elevatedButtonTheme: ElevatedButtonThemeData(
     style: ElevatedButton.styleFrom(
       backgroundColor: AppColors.primaryBlueLight,
-      foregroundColor: Colors.white,
+      foregroundColor: Colors.black,
       elevation: 0,
+      shadowColor: Colors.transparent,
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      textStyle: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppColors.radiusMedium),
+      ),
+      textStyle: GoogleFonts.inter(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.4,
+      ),
     ),
   ),
 
-  // Input Decoration
+  // Input Decoration - Glassmorphism
   inputDecorationTheme: InputDecorationTheme(
     filled: true,
-    fillColor: AppColors.darkInputFill,
+    fillColor: AppColors.glassDarkSurface,
     contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
     border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide.none,
+      borderRadius: BorderRadius.circular(AppColors.radiusMedium),
+      borderSide: BorderSide(color: AppColors.glassDarkBorder, width: 1.5),
     ),
     enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: AppColors.darkBorder, width: 1),
+      borderRadius: BorderRadius.circular(AppColors.radiusMedium),
+      borderSide: BorderSide(color: AppColors.glassDarkBorder, width: 1.5),
     ),
     focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(AppColors.radiusMedium),
       borderSide: const BorderSide(color: AppColors.primaryBlueLight, width: 2),
     ),
     errorBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: AppColors.error, width: 1),
+      borderRadius: BorderRadius.circular(AppColors.radiusMedium),
+      borderSide: const BorderSide(color: AppColors.error, width: 1.5),
     ),
     hintStyle: GoogleFonts.inter(
-      fontSize: 14,
+      fontSize: 15,
       color: AppColors.textSecondaryDark,
+      letterSpacing: 0.2,
     ),
   ),
 
-  // Bottom Navigation
-  bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-    backgroundColor: AppColors.darkSurface,
+  // Bottom Navigation - Glassmorphism
+  bottomNavigationBarTheme: BottomNavigationBarThemeData(
+    backgroundColor: AppColors.glassDarkSurface,
     selectedItemColor: AppColors.primaryBlueLight,
     unselectedItemColor: AppColors.textSecondaryDark,
     type: BottomNavigationBarType.fixed,
-    elevation: 8,
+    elevation: 0,
+    selectedLabelStyle: GoogleFonts.inter(
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.4,
+    ),
+    unselectedLabelStyle: GoogleFonts.inter(
+      fontSize: 12,
+      fontWeight: FontWeight.w500,
+      letterSpacing: 0.4,
+    ),
   ),
 
-  // Floating Action Button
-  floatingActionButtonTheme: const FloatingActionButtonThemeData(
+  // Floating Action Button - iOS style
+  floatingActionButtonTheme: FloatingActionButtonThemeData(
     backgroundColor: AppColors.primaryBlueLight,
-    foregroundColor: Colors.white,
-    elevation: 4,
+    foregroundColor: Colors.black,
+    elevation: 8,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
   ),
 
   // Divider
   dividerTheme: const DividerThemeData(
     color: AppColors.darkBorder,
-    thickness: 1,
+    thickness: 0.5,
+    space: 1,
   ),
 
-  // Switch
+  // Switch - iOS style
   switchTheme: SwitchThemeData(
     thumbColor: WidgetStateProperty.resolveWith((states) {
-      if (states.contains(WidgetState.selected)) {
-        return AppColors.primaryBlueLight;
-      }
-      return AppColors.textSecondaryDark;
+      return Colors.white;
     }),
     trackColor: WidgetStateProperty.resolveWith((states) {
       if (states.contains(WidgetState.selected)) {
-        return AppColors.primaryBlueLight.withOpacity(0.3);
+        return AppColors.primaryBlueLight;
       }
-      return AppColors.darkBorder;
+      return AppColors.textSecondaryDark.withValues(alpha: 0.3);
     }),
+  ),
+
+  // Dialog - Glassmorphism
+  dialogTheme: DialogThemeData(
+    backgroundColor: AppColors.glassDarkSurface,
+    elevation: 0,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppColors.radiusLarge),
+      side: BorderSide(color: AppColors.glassDarkBorder, width: 1.5),
+    ),
+  ),
+
+  // Snackbar
+  snackBarTheme: SnackBarThemeData(
+    backgroundColor: AppColors.textPrimaryDark,
+    contentTextStyle: GoogleFonts.inter(fontSize: 15, color: Colors.black),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppColors.radiusMedium),
+    ),
+    behavior: SnackBarBehavior.floating,
   ),
 );

@@ -164,8 +164,10 @@ class VoiceService {
         },
         listenFor: listenFor ?? const Duration(seconds: 10),
         pauseFor: const Duration(seconds: 3),
-        partialResults: false,
-        cancelOnError: true,
+        listenOptions: SpeechListenOptions(
+          partialResults: false,
+          cancelOnError: true,
+        ),
       );
     } catch (e) {
       _isListening = false;

@@ -1,5 +1,5 @@
 /// Drishti App - Custom Text Field
-/// 
+///
 /// Styled text input field matching UI design.
 library;
 
@@ -46,12 +46,12 @@ class CustomTextField extends StatelessWidget {
         // Label
         Text(
           label,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500),
         ),
         const SizedBox(height: 8),
-        
+
         // Input field
         TextFormField(
           controller: controller,
@@ -73,7 +73,7 @@ class CustomTextField extends StatelessWidget {
             prefixIcon: prefixIcon != null
                 ? Icon(
                     prefixIcon,
-                    color: AppColors.primaryBlue.withOpacity(0.7),
+                    color: AppColors.primaryBlue.withValues(alpha: 0.7),
                     size: 22,
                   )
                 : null,
@@ -105,16 +105,11 @@ class CustomTextField extends StatelessWidget {
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: AppColors.error,
-              ),
+              borderSide: const BorderSide(color: AppColors.error),
             ),
             focusedErrorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: AppColors.error,
-                width: 2,
-              ),
+              borderSide: const BorderSide(color: AppColors.error, width: 2),
             ),
           ),
         ),

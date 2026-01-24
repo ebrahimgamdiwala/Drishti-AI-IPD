@@ -1,5 +1,5 @@
 /// Drishti App - Forgot Password Screen
-/// 
+///
 /// Password reset request form.
 library;
 
@@ -37,7 +37,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     setState(() => _isLoading = true);
 
     final authProvider = context.read<AuthProvider>();
-    final success = await authProvider.forgotPassword(_emailController.text.trim());
+    final success = await authProvider.forgotPassword(
+      _emailController.text.trim(),
+    );
 
     setState(() {
       _isLoading = false;
@@ -77,7 +79,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       child: Text(
                         AppStrings.resetPassword,
                         textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(
                               color: AppColors.primaryBlue,
                               fontWeight: FontWeight.w600,
                             ),
@@ -85,31 +88,32 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     ),
                     const SizedBox(width: 48),
                   ],
-                )
-                    .animate()
-                    .fadeIn(duration: 300.ms),
+                ).animate().fadeIn(duration: 300.ms),
 
                 const SizedBox(height: 60),
 
                 // Icon
                 Center(
-                  child: Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryBlue.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(25),
-                    ),
-                    child: Icon(
-                      _emailSent ? Icons.mark_email_read : Icons.lock_reset,
-                      size: 50,
-                      color: AppColors.primaryBlue,
-                    ),
-                  ),
-                )
+                      child: Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryBlue.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                        child: Icon(
+                          _emailSent ? Icons.mark_email_read : Icons.lock_reset,
+                          size: 50,
+                          color: AppColors.primaryBlue,
+                        ),
+                      ),
+                    )
                     .animate()
                     .fadeIn(delay: 200.ms, duration: 300.ms)
-                    .scale(begin: const Offset(0.8, 0.8), end: const Offset(1, 1)),
+                    .scale(
+                      begin: const Offset(0.8, 0.8),
+                      end: const Offset(1, 1),
+                    ),
 
                 const SizedBox(height: 32),
 
@@ -118,12 +122,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   child: Text(
                     _emailSent ? 'Check Your Email' : 'Forgot Password?',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                )
-                    .animate()
-                    .fadeIn(delay: 300.ms, duration: 300.ms),
+                ).animate().fadeIn(delay: 300.ms, duration: 300.ms),
 
                 const SizedBox(height: 12),
 
@@ -136,9 +138,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
-                )
-                    .animate()
-                    .fadeIn(delay: 400.ms, duration: 300.ms),
+                ).animate().fadeIn(delay: 400.ms, duration: 300.ms),
 
                 const SizedBox(height: 40),
 
@@ -159,9 +159,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       }
                       return null;
                     },
-                  )
-                      .animate()
-                      .fadeIn(delay: 500.ms, duration: 300.ms),
+                  ).animate().fadeIn(delay: 500.ms, duration: 300.ms),
 
                   const SizedBox(height: 32),
 
@@ -170,17 +168,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     text: 'Send Reset Link',
                     isLoading: _isLoading,
                     onPressed: _handleSubmit,
-                  )
-                      .animate()
-                      .fadeIn(delay: 600.ms, duration: 300.ms),
+                  ).animate().fadeIn(delay: 600.ms, duration: 300.ms),
                 ] else ...[
                   // Return to login button
                   GradientButton(
                     text: 'Back to Login',
                     onPressed: () => Navigator.pop(context),
-                  )
-                      .animate()
-                      .fadeIn(delay: 500.ms, duration: 300.ms),
+                  ).animate().fadeIn(delay: 500.ms, duration: 300.ms),
 
                   const SizedBox(height: 16),
 
@@ -192,9 +186,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       },
                       child: const Text('Didn\'t receive email? Resend'),
                     ),
-                  )
-                      .animate()
-                      .fadeIn(delay: 600.ms, duration: 300.ms),
+                  ).animate().fadeIn(delay: 600.ms, duration: 300.ms),
                 ],
               ],
             ),
