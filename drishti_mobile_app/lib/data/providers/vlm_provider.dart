@@ -179,6 +179,45 @@ Be direct and safety-focused.''',
     return response.text;
   }
 
+  // ==================== Chat API ====================
+
+  /// Chat history for multi-turn conversations
+  List<VLMChatMessage> get chatHistory => _vlmService.chatHistory;
+
+  /// Whether the model is currently generating a response
+  bool get isGenerating => _vlmService.isGenerating;
+
+  /// Current image being discussed in chat
+  File? get currentChatImage => _vlmService.currentImage;
+
+  /// Stream of tokens as they are generated
+  Stream<String> get tokenStream => _vlmService.tokenStream;
+
+  /// Start a new chat session with an image
+  Future<void> startNewChat(File imageFile) async {
+    if (!isReady) {
+      throw Exception('VLM not ready. Call ensureReady() first.');
+    }
+    await _vlmService.startNewChat(imageFile);
+    notifyListeners();
+  }
+
+  /// Send a message in the chat
+  Future<VLMChatMessage> sendChatMessage(String message) async {
+    if (!isReady) {
+      throw Exception('VLM not ready. Call ensureReady() first.');
+    }
+    final response = await _vlmService.sendChatMessage(message);
+    notifyListeners();
+    return response;
+  }
+
+  /// Clear the chat and start fresh
+  void clearChat() {
+    _vlmService.clearChat();
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _vlmService.dispose();

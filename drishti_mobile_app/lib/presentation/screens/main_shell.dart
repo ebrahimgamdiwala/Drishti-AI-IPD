@@ -11,6 +11,7 @@ import 'dashboard/dashboard_screen.dart';
 import 'relatives/relatives_screen.dart';
 import 'activity/activity_screen.dart';
 import 'settings/settings_screen.dart';
+import 'vlm/vlm_chat_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -25,6 +26,7 @@ class _MainShellState extends State<MainShell> {
   final List<Widget> _screens = const [
     HomeScreen(),
     DashboardScreen(),
+    VLMChatScreen(),
     RelativesScreen(),
     ActivityScreen(),
     SettingsScreen(),
@@ -36,6 +38,11 @@ class _MainShellState extends State<MainShell> {
       icon: Icons.dashboard_outlined,
       activeIcon: Icons.dashboard,
       label: 'Dashboard',
+    ),
+    _NavItem(
+      icon: Icons.psychology_outlined,
+      activeIcon: Icons.psychology,
+      label: 'AI Vision',
     ),
     _NavItem(
       icon: Icons.people_outlined,
@@ -99,10 +106,13 @@ class _MainShellState extends State<MainShell> {
                 ),
               ),
               child: SafeArea(
+                top: false,
+                bottom: true,
+                minimum: const EdgeInsets.only(bottom: 8),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
-                    vertical: 8,
+                    vertical: 6,
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -132,7 +142,7 @@ class _MainShellState extends State<MainShell> {
         borderRadius: BorderRadius.circular(16),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
             color: isSelected
                 ? AppColors.primaryBlue.withValues(alpha: 0.1)

@@ -128,6 +128,41 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen> {
                 // Download Button
                 _buildDownloadButton(context, isDark),
 
+                const SizedBox(height: 12),
+
+                // Redownload option
+                TextButton.icon(
+                  onPressed: _isDownloading
+                      ? null
+                      : () async {
+                          setState(() {
+                            _statusMessage = 'Clearing models...';
+                            _isDownloading = true;
+                          });
+                          try {
+                            final vlm = context.read<VLMProvider>();
+                            await vlm.deleteModels();
+                            setState(() {
+                              _statusMessage =
+                                  'Deleted. Tap to download again.';
+                              _isDownloading = false;
+                            });
+                          } catch (e) {
+                            setState(() {
+                              _statusMessage = 'Error clearing models: $e';
+                              _isDownloading = false;
+                            });
+                          }
+                        },
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Redownload models'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: isDark
+                        ? Colors.white70
+                        : AppColors.primaryBlue,
+                  ),
+                ),
+
                 const SizedBox(height: 24),
 
                 // Info text

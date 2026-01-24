@@ -10,6 +10,31 @@ import 'package:flutter/foundation.dart';
 import 'package:llama_cpp_dart/llama_cpp_dart.dart';
 import 'package:path_provider/path_provider.dart';
 
+/// A chat message in the VLM conversation
+class VLMChatMessage {
+  final String id;
+  final String role; // 'user' or 'assistant'
+  final String content;
+  final DateTime timestamp;
+  final bool hasImage;
+  final File? imageFile;
+  final Duration? inferenceTime;
+
+  VLMChatMessage({
+    String? id,
+    required this.role,
+    required this.content,
+    DateTime? timestamp,
+    this.hasImage = false,
+    this.imageFile,
+    this.inferenceTime,
+  }) : id = id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+       timestamp = timestamp ?? DateTime.now();
+
+  bool get isUser => role == 'user';
+  bool get isAssistant => role == 'assistant';
+}
+
 /// Configuration for the local VLM
 class VLMConfig {
   /// Path to the main model file (GGUF format)
@@ -81,6 +106,28 @@ class LocalVLMService extends ChangeNotifier {
   LlamaParent? _llama;
   bool _isModelLoaded = false;
 
+  // Chat history for multi-turn conversations
+  final List<VLMChatMessage> _chatHistory = [];
+  File? _currentImage;
+  LlamaImage? _cachedLlamaImage;
+  bool _isGenerating = false;
+
+  // Stream controller for real-time token streaming
+  final StreamController<String> _tokenController =
+      StreamController<String>.broadcast();
+
+  /// Stream of tokens as they are generated
+  Stream<String> get tokenStream => _tokenController.stream;
+
+  /// Current chat history
+  List<VLMChatMessage> get chatHistory => List.unmodifiable(_chatHistory);
+
+  /// Whether the model is currently generating
+  bool get isGenerating => _isGenerating;
+
+  /// Current image being discussed
+  File? get currentImage => _currentImage;
+
   // Model file names - using INT4 quantized for mobile efficiency
   static const String _modelFileName = 'llava-phi-3-mini-int4.gguf';
   static const String _mmProjFileName = 'llava-phi-3-mini-mmproj-f16.gguf';
@@ -92,6 +139,7 @@ class LocalVLMService extends ChangeNotifier {
       'https://huggingface.co/xtuner/llava-phi-3-mini-gguf/resolve/main/llava-phi-3-mini-mmproj-f16.gguf';
 
   // Approximate file sizes for progress calculation
+  // Fallback expected sizes (used if server doesn't send Content-Length)
   static const int _modelSizeBytes = 2500000000; // ~2.5GB for INT4
   static const int _mmProjSizeBytes = 600000000; // ~600MB for mmproj
 
@@ -145,27 +193,50 @@ class LocalVLMService extends ChangeNotifier {
       final modelPath = '${dir.path}/$_modelFileName';
       final mmProjPath = '${dir.path}/$_mmProjFileName';
 
+      // Track combined progress using real Content-Length when available
+      int modelTotal = _modelSizeBytes;
+      int projTotal = _mmProjSizeBytes;
+      int downloadedSoFar = 0;
+
       // Download main model
       onProgress?.call(0.0, 'Downloading LLaVA Phi-3 model...');
-      await _downloadFile(_modelUrl, modelPath, _modelSizeBytes, (progress) {
-        _loadProgress = progress * 0.7; // Model is 70% of total
+      final modelDownloaded = await _downloadFile(_modelUrl, modelPath, (
+        downloaded,
+        total,
+      ) {
+        modelTotal = total ?? modelTotal;
+        final totalBytes = modelTotal + projTotal;
+        final overallDownloaded = downloadedSoFar + downloaded;
+        _loadProgress = overallDownloaded / totalBytes;
         onProgress?.call(
           _loadProgress,
-          'Downloading model: ${(progress * 100).toStringAsFixed(1)}%',
+          'Model: ${(_loadProgress * 100).toStringAsFixed(1)}% '
+          '(${_humanBytes(overallDownloaded)}/${_humanBytes(totalBytes)})',
         );
         notifyListeners();
       });
 
+      downloadedSoFar += modelDownloaded;
+
       // Download multimodal projector
-      onProgress?.call(0.7, 'Downloading vision projector...');
-      await _downloadFile(_mmProjUrl, mmProjPath, _mmProjSizeBytes, (progress) {
-        _loadProgress = 0.7 + (progress * 0.3); // mmproj is 30% of total
+      onProgress?.call(_loadProgress, 'Downloading vision projector...');
+      final projDownloaded = await _downloadFile(_mmProjUrl, mmProjPath, (
+        downloaded,
+        total,
+      ) {
+        projTotal = total ?? projTotal;
+        final totalBytes = modelTotal + projTotal;
+        final overallDownloaded = downloadedSoFar + downloaded;
+        _loadProgress = overallDownloaded / totalBytes;
         onProgress?.call(
           _loadProgress,
-          'Downloading projector: ${(progress * 100).toStringAsFixed(1)}%',
+          'Projector: ${(_loadProgress * 100).toStringAsFixed(1)}% '
+          '(${_humanBytes(overallDownloaded)}/${_humanBytes(totalBytes)})',
         );
         notifyListeners();
       });
+
+      downloadedSoFar += projDownloaded;
 
       _loadProgress = 1.0;
       onProgress?.call(1.0, 'Download complete!');
@@ -179,11 +250,11 @@ class LocalVLMService extends ChangeNotifier {
   }
 
   /// Download a file with progress tracking
-  Future<void> _downloadFile(
+  /// Download a file and report raw byte progress. Returns bytes downloaded.
+  Future<int> _downloadFile(
     String url,
     String savePath,
-    int expectedSize,
-    void Function(double progress) onProgress,
+    void Function(int downloaded, int? totalBytes) onProgress,
   ) async {
     final client = HttpClient();
     try {
@@ -194,6 +265,10 @@ class LocalVLMService extends ChangeNotifier {
         throw Exception('HTTP ${response.statusCode}');
       }
 
+      final contentLength = response.contentLength != -1
+          ? response.contentLength
+          : null;
+
       final file = File(savePath);
       final sink = file.openWrite();
       int downloaded = 0;
@@ -201,13 +276,35 @@ class LocalVLMService extends ChangeNotifier {
       await for (final chunk in response) {
         sink.add(chunk);
         downloaded += chunk.length;
-        onProgress(downloaded / expectedSize);
+        onProgress(downloaded, contentLength);
       }
 
       await sink.close();
+      return downloaded;
     } finally {
       client.close();
     }
+  }
+
+  String _humanBytes(int bytes) {
+    const units = ['B', 'KB', 'MB', 'GB'];
+    double size = bytes.toDouble();
+    int unitIndex = 0;
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024;
+      unitIndex++;
+    }
+    return '${size.toStringAsFixed(size >= 10 ? 0 : 1)} ${units[unitIndex]}';
+  }
+
+  int _suggestThreads() {
+    final cores = Platform.numberOfProcessors;
+    // Use more threads when available (but keep a cap to avoid thermal issues)
+    final suggested = cores - 1; // leave one core for UI
+    if (suggested >= 6) return 6;
+    if (suggested >= 4) return 4;
+    if (suggested >= 3) return 3;
+    return 2;
   }
 
   /// Initialize the VLM engine
@@ -217,6 +314,7 @@ class LocalVLMService extends ChangeNotifier {
     if (_status == VLMStatus.ready) return;
 
     _status = VLMStatus.loading;
+    _errorMessage = null;
     _loadProgress = 0.0;
     notifyListeners();
 
@@ -230,6 +328,25 @@ class LocalVLMService extends ChangeNotifier {
       final modelPath = '${dir.path}/$_modelFileName';
       final mmProjPath = '${dir.path}/$_mmProjFileName';
 
+      // Debug: Verify files exist and show sizes
+      final modelFile = File(modelPath);
+      final projFile = File(mmProjPath);
+      final modelSize = await modelFile.length();
+      final projSize = await projFile.length();
+      debugPrint('[VLM] Model path: $modelPath');
+      debugPrint(
+        '[VLM] Model size: ${_humanBytes(modelSize)} ($modelSize bytes)',
+      );
+      debugPrint('[VLM] Proj path: $mmProjPath');
+      debugPrint('[VLM] Proj size: ${_humanBytes(projSize)} ($projSize bytes)');
+
+      // Sanity check: model should be at least 500MB
+      if (modelSize < 500000000) {
+        throw Exception(
+          'Model file appears incomplete (${_humanBytes(modelSize)}). Please redownload.',
+        );
+      }
+
       onProgress?.call(0.1, 'Initializing model parameters...');
       _loadProgress = 0.1;
       notifyListeners();
@@ -238,18 +355,20 @@ class LocalVLMService extends ChangeNotifier {
       final modelParams = ModelParams()
         ..nGpuLayers =
             0 // CPU only for mobile compatibility
-        ..useMemorymap = true
+        ..mainGpu =
+            -1 // No GPU device (fixes "invalid value for main_gpu: 0" error)
+        // mmap can fail on some devices/storage; disable to load directly
+        ..useMemorymap = false
         ..useMemoryLock = false;
 
-      // Configure context parameters
+      // Configure context parameters (reduced to lower RAM/CPU load)
+      final threads = _suggestThreads();
       final contextParams = ContextParams()
         ..nCtx =
-            2048 // Context window size
-        ..nBatch = 512
-        ..nThreads =
-            Platform.numberOfProcessors ~/
-            2 // Use half of available cores
-        ..nThreadsBatch = Platform.numberOfProcessors ~/ 2;
+            1024 // Smaller context to reduce memory
+        ..nBatch = 256
+        ..nThreads = threads
+        ..nThreadsBatch = threads;
 
       // Configure sampler parameters for generation
       final samplerParams = SamplerParams()
@@ -269,7 +388,7 @@ class LocalVLMService extends ChangeNotifier {
         contextParams: contextParams,
         samplingParams: samplerParams,
         mmprojPath: mmProjPath, // Vision projector for multimodal
-        verbose: kDebugMode,
+        verbose: true, // Always enable for troubleshooting
       );
 
       // Create LlamaParent for isolate-based inference (non-blocking)
@@ -280,8 +399,12 @@ class LocalVLMService extends ChangeNotifier {
       _loadProgress = 0.5;
       notifyListeners();
 
-      // Initialize the isolate and load the model
-      await _llama!.init();
+      // Initialize the isolate and load the model (can take ~30–120s)
+      onProgress?.call(0.8, 'Initializing model (this can take a minute)...');
+      _loadProgress = 0.8;
+      notifyListeners();
+
+      await _llama!.init().timeout(const Duration(seconds: 120));
       _isModelLoaded = true;
 
       onProgress?.call(1.0, 'Model ready!');
@@ -315,20 +438,46 @@ class LocalVLMService extends ChangeNotifier {
       final image = LlamaImage.fromBytes(imageBytes);
 
       // Build the prompt with image
-      // LLaVA uses a special format: <image>\nUSER: {prompt}\nASSISTANT:
-      final formattedPrompt = '<image>\nUSER: $prompt\nASSISTANT:';
+      // LLaVA Phi-3 uses a specific format
+      final formattedPrompt =
+          '<|user|>\n<image>\n$prompt<|end|>\n<|assistant|>';
 
-      // Use sendPromptWithImages for multimodal inference
-      // This returns a Future<String> with the complete response
-      final responseText = await _llama!.sendPromptWithImages(formattedPrompt, [
+      debugPrint('[VLM] Sending prompt with image...');
+
+      // sendPromptWithImages returns a promptId, not the response text
+      // We need to listen to the stream and wait for completion
+      final StringBuffer responseBuffer = StringBuffer();
+
+      // Subscribe to the token stream before sending prompt
+      final subscription = _llama!.stream.listen((token) {
+        responseBuffer.write(token);
+        debugPrint('[VLM] Token: $token');
+      });
+
+      // Send the prompt with images - returns promptId
+      final promptId = await _llama!.sendPromptWithImages(formattedPrompt, [
         image,
       ]);
 
+      debugPrint(
+        '[VLM] Prompt sent, waiting for completion (id: $promptId)...',
+      );
+
+      // Wait for generation to complete
+      await _llama!.waitForCompletion(promptId);
+
+      // Cancel the subscription
+      await subscription.cancel();
+
       stopwatch.stop();
+
+      final responseText = responseBuffer.toString();
+      debugPrint('[VLM] Response: $responseText');
 
       // Clean up the response text
       final cleanedResponse = responseText
           .replaceAll('</s>', '')
+          .replaceAll('<|end|>', '')
           .replaceAll('[/INST]', '')
           .trim();
 
@@ -363,19 +512,45 @@ class LocalVLMService extends ChangeNotifier {
       // Create LlamaImage from file (more efficient for isolates)
       final image = LlamaImage.fromFile(imageFile);
 
-      // Build the prompt with image
-      final formattedPrompt = '<image>\nUSER: $prompt\nASSISTANT:';
+      // Build the prompt with image - LLaVA Phi-3 format
+      final formattedPrompt =
+          '<|user|>\n<image>\n$prompt<|end|>\n<|assistant|>';
 
-      // Use sendPromptWithImages for multimodal inference
-      final responseText = await _llama!.sendPromptWithImages(formattedPrompt, [
+      debugPrint('[VLM] Sending prompt with image file: ${imageFile.path}');
+
+      // Collect tokens from stream
+      final StringBuffer responseBuffer = StringBuffer();
+
+      // Subscribe to the token stream before sending prompt
+      final subscription = _llama!.stream.listen((token) {
+        responseBuffer.write(token);
+        debugPrint('[VLM] Token: $token');
+      });
+
+      // Send the prompt with images - returns promptId
+      final promptId = await _llama!.sendPromptWithImages(formattedPrompt, [
         image,
       ]);
 
+      debugPrint(
+        '[VLM] Prompt sent, waiting for completion (id: $promptId)...',
+      );
+
+      // Wait for generation to complete
+      await _llama!.waitForCompletion(promptId);
+
+      // Cancel the subscription
+      await subscription.cancel();
+
       stopwatch.stop();
+
+      final responseText = responseBuffer.toString();
+      debugPrint('[VLM] Response: $responseText');
 
       // Clean up the response text
       final cleanedResponse = responseText
           .replaceAll('</s>', '')
+          .replaceAll('<|end|>', '')
           .replaceAll('[/INST]', '')
           .trim();
 
@@ -395,7 +570,9 @@ class LocalVLMService extends ChangeNotifier {
 
   /// Stop any ongoing inference
   Future<void> stopInference() async {
+    _isGenerating = false;
     await _llama?.stop();
+    notifyListeners();
   }
 
   /// Clear the context/conversation history
@@ -404,9 +581,224 @@ class LocalVLMService extends ChangeNotifier {
     _llama?.messages.clear();
   }
 
+  /// Start a new chat session with an image
+  ///
+  /// This sets the current image for the conversation and clears previous history
+  Future<void> startNewChat(File imageFile) async {
+    // Stop any ongoing generation
+    if (_isGenerating) {
+      await stopInference();
+    }
+
+    _chatHistory.clear();
+    _currentImage = imageFile;
+    // Create LlamaImage - will read file in isolate
+    _cachedLlamaImage = LlamaImage.fromFile(imageFile);
+
+    // Clear llama context for fresh conversation
+    clearContext();
+    // Reset streaming state for a clean first response
+    _isGenerating = false;
+    _tokenController.add('');
+
+    debugPrint('[VLM] Started new chat with image: ${imageFile.path}');
+    notifyListeners();
+  }
+
+  /// Send a message in the chat and get a response
+  ///
+  /// For the first message, include the image in the prompt.
+  /// For follow-up messages, continue the conversation without re-sending image.
+  Future<VLMChatMessage> sendChatMessage(String userMessage) async {
+    if (_status != VLMStatus.ready || _llama == null || !_isModelLoaded) {
+      throw Exception('Model not initialized. Call initialize() first.');
+    }
+
+    if (_currentImage == null || _cachedLlamaImage == null) {
+      throw Exception('No image set. Call startNewChat() first.');
+    }
+
+    // Prevent sending while already generating
+    if (_isGenerating) {
+      debugPrint('[VLM Chat] Already generating, rejecting new message');
+      throw Exception('Already generating a response. Please wait.');
+    }
+
+    _isGenerating = true;
+    notifyListeners();
+
+    // Count user messages BEFORE adding this one
+    final existingUserMessages = _chatHistory.where((m) => m.isUser).length;
+    final isFirstMessage = existingUserMessages == 0;
+
+    // Add user message to history
+    final userChatMessage = VLMChatMessage(
+      role: 'user',
+      content: userMessage,
+      hasImage: isFirstMessage,
+      imageFile: isFirstMessage ? _currentImage : null,
+    );
+    _chatHistory.add(userChatMessage);
+    notifyListeners();
+
+    final stopwatch = Stopwatch()..start();
+    StreamSubscription<String>? subscription;
+
+    try {
+      // Build the prompt based on whether this is the first message or follow-up
+      String formattedPrompt;
+      List<LlamaImage> images;
+
+      if (isFirstMessage) {
+        // First user message - include image
+        formattedPrompt =
+            '<|user|>\n<image>\n$userMessage<|end|>\n<|assistant|>';
+        images = [_cachedLlamaImage!];
+        debugPrint(
+          '[VLM Chat] FIRST message with image: ${_currentImage!.path}',
+        );
+      } else {
+        // Follow-up message - no image, continue conversation
+        // For LLaVA Phi-3, we need to maintain context but not resend the image
+        formattedPrompt = '<|user|>\n$userMessage<|end|>\n<|assistant|>';
+        images = []; // Empty list for follow-ups
+        debugPrint('[VLM Chat] FOLLOW-UP message #${existingUserMessages + 1}');
+      }
+
+      debugPrint('[VLM Chat] Formatted prompt: $formattedPrompt');
+      debugPrint('[VLM Chat] Images to send: ${images.length}');
+
+      // Collect tokens from stream (dedupe cumulative chunks)
+      final StringBuffer responseBuffer = StringBuffer();
+      int tokenCount = 0;
+
+      // Subscribe to the token stream BEFORE sending prompt
+      subscription = _llama!.stream.listen(
+        (token) {
+          if (token.isEmpty) return;
+
+          tokenCount++;
+
+          final current = responseBuffer.toString();
+
+          // Some backends emit cumulative partials; replace instead of append
+          if (token.startsWith(current)) {
+            responseBuffer
+              ..clear()
+              ..write(token);
+          } else {
+            responseBuffer.write(token);
+          }
+
+          final streamText = responseBuffer.toString();
+          debugPrint(
+            '[VLM Chat] Token #$tokenCount => "$token" (len=${streamText.length})',
+          );
+
+          // Forward cumulative text to UI to avoid duplicated fragments
+          _tokenController.add(streamText);
+        },
+        onError: (error) {
+          debugPrint('[VLM Chat] Stream error: $error');
+        },
+        onDone: () {
+          debugPrint('[VLM Chat] Stream done');
+        },
+      );
+
+      debugPrint('[VLM Chat] Stream subscription set up, sending prompt...');
+
+      // Send the prompt and get promptId
+      final promptId = await _llama!.sendPromptWithImages(
+        formattedPrompt,
+        images,
+      );
+
+      debugPrint('[VLM Chat] Prompt sent with id: $promptId');
+      debugPrint('[VLM Chat] Waiting for completion...');
+
+      // Wait for generation to complete with a timeout
+      await _llama!
+          .waitForCompletion(promptId)
+          .timeout(
+            const Duration(minutes: 5),
+            onTimeout: () {
+              debugPrint('[VLM Chat] TIMEOUT after 5 minutes!');
+              throw TimeoutException(
+                'Response generation timed out after 5 minutes',
+              );
+            },
+          );
+
+      debugPrint('[VLM Chat] Completion received! Total tokens: $tokenCount');
+
+      // Cancel the subscription
+      await subscription.cancel();
+      subscription = null;
+
+      stopwatch.stop();
+
+      final responseText = responseBuffer.toString();
+      debugPrint(
+        '[VLM Chat] Full response ($tokenCount tokens): $responseText',
+      );
+
+      // Clean up the response text
+      final cleanedResponse = responseText
+          .replaceAll('</s>', '')
+          .replaceAll('<|end|>', '')
+          .replaceAll('<|endoftext|>', '')
+          .replaceAll('[/INST]', '')
+          .trim();
+
+      // Create assistant message
+      final assistantMessage = VLMChatMessage(
+        role: 'assistant',
+        content: cleanedResponse.isEmpty
+            ? 'I could not generate a response. Please try again.'
+            : cleanedResponse,
+        inferenceTime: stopwatch.elapsed,
+      );
+
+      _chatHistory.add(assistantMessage);
+      _isGenerating = false;
+      notifyListeners();
+
+      return assistantMessage;
+    } catch (e, stackTrace) {
+      stopwatch.stop();
+      _isGenerating = false;
+      debugPrint('[VLM Chat] ERROR: $e');
+      debugPrint('[VLM Chat] Stack trace: $stackTrace');
+
+      // Cancel subscription if active
+      await subscription?.cancel();
+
+      // Add error message to chat
+      final errorMessage = VLMChatMessage(
+        role: 'assistant',
+        content: 'Error: $e',
+      );
+      _chatHistory.add(errorMessage);
+      notifyListeners();
+
+      rethrow;
+    }
+  }
+
+  /// Clear chat history and start fresh
+  void clearChat() {
+    _chatHistory.clear();
+    _currentImage = null;
+    _cachedLlamaImage = null;
+    clearContext();
+    notifyListeners();
+  }
+
   /// Release model resources
   @override
   void dispose() {
+    _tokenController.close();
     // Dispose llama_cpp_dart resources
     if (_llama != null) {
       _llama!.dispose();

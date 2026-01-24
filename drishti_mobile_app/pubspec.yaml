@@ -34,8 +34,8 @@ dependencies:
   flutter_secure_storage: ^9.0.0
   
   # Accessibility & Voice
-  flutter_tts: ^3.8.5
-  speech_to_text: ^6.6.0
+  speech_to_text: ^7.3.0
+  flutter_tts: ^4.2.5
   
   # Camera & Images
   image_picker: ^1.0.7
@@ -44,7 +44,8 @@ dependencies:
   flutter_animate: ^4.5.0
   
   # Local LLM (Vision Language Model)
-  llama_cpp_dart: ^0.2.2
+  llama_cpp_dart:
+    path: ../llama_cpp_dart
   http: ^1.1.0
   image: ^4.1.7
   
