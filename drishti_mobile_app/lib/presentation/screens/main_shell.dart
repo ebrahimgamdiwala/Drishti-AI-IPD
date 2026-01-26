@@ -87,20 +87,20 @@ class _MainShellState extends State<MainShell> {
         bottomNavigationBar: ClipRRect(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
             child: Container(
               decoration: BoxDecoration(
                 color: isDark
-                    ? AppColors.darkSurface.withValues(alpha: 0.8)
-                    : Colors.white.withValues(alpha: 0.9),
+                    ? AppColors.glassDarkSurface
+                    : AppColors.glassWhite,
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(24),
                 ),
                 border: Border(
                   top: BorderSide(
                     color: isDark
-                        ? Colors.white.withValues(alpha: 0.1)
-                        : AppColors.primaryBlue.withValues(alpha: 0.1),
+                        ? AppColors.glassDarkBorder
+                        : AppColors.glassBorder,
                     width: 1,
                   ),
                 ),
@@ -109,16 +109,25 @@ class _MainShellState extends State<MainShell> {
                 top: false,
                 bottom: true,
                 minimum: const EdgeInsets.only(bottom: 8),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 6,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: List.generate(
-                      _navItems.length,
-                      (index) => _buildNavItem(index, isDark),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 6,
+                    ),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minWidth: MediaQuery.of(context).size.width - 16,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: List.generate(
+                          _navItems.length,
+                          (index) => _buildNavItem(index, isDark),
+                        ),
+                      ),
                     ),
                   ),
                 ),

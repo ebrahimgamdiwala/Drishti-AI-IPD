@@ -6,6 +6,7 @@ library;
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/api_endpoints.dart';
 import '../../../data/models/relative_model.dart';
 
 class PersonCard extends StatelessWidget {
@@ -145,6 +146,13 @@ class PersonCard extends StatelessWidget {
                         tooltip: 'Info',
                         onPressed: onTap,
                       ),
+                      const SizedBox(height: 4),
+                      _ActionButton(
+                        icon: Icons.delete_outline,
+                        tooltip: 'Delete',
+                        color: AppColors.error,
+                        onPressed: onDelete,
+                      ),
                     ],
                   ),
                 ],
@@ -184,7 +192,9 @@ class PersonCard extends StatelessWidget {
             ? Image.file(File(localPath), fit: BoxFit.cover)
             : hasImage
             ? Image.network(
-                relative.images.first.path,
+                relative.images.first.path.startsWith('http')
+                    ? relative.images.first.path
+                    : '${ApiEndpoints.baseUrl}${relative.images.first.path}',
                 fit: BoxFit.cover,
                 errorBuilder: (_, _, _) => _buildPlaceholder(),
               )
@@ -213,11 +223,13 @@ class PersonCard extends StatelessWidget {
 class _ActionButton extends StatelessWidget {
   final IconData icon;
   final String tooltip;
+  final Color? color;
   final VoidCallback? onPressed;
 
   const _ActionButton({
     required this.icon,
     required this.tooltip,
+    this.color,
     this.onPressed,
   });
 
@@ -232,10 +244,10 @@ class _ActionButton extends StatelessWidget {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: AppColors.primaryBlue.withValues(alpha: 0.1),
+            color: (color ?? AppColors.primaryBlue).withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(icon, size: 18, color: AppColors.primaryBlue),
+          child: Icon(icon, size: 18, color: color ?? AppColors.primaryBlue),
         ),
       ),
     );

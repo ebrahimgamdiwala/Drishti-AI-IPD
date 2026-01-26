@@ -9,8 +9,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
+import '../../../core/constants/api_endpoints.dart';
 import '../../../data/models/relative_model.dart';
-import '../../../data/services/storage_service.dart';
+import '../../../data/repositories/relatives_repository.dart';
 import '../../../data/services/voice_service.dart';
 import '../../widgets/cards/person_card.dart';
 import '../../widgets/inputs/custom_text_field.dart';
@@ -24,7 +25,7 @@ class RelativesScreen extends StatefulWidget {
 }
 
 class _RelativesScreenState extends State<RelativesScreen> {
-  final StorageService _storage = StorageService();
+  final RelativesRepository _repository = RelativesRepository();
   final VoiceService _voiceService = VoiceService();
 
   List<RelativeModel> _relatives = [];
@@ -51,12 +52,20 @@ class _RelativesScreenState extends State<RelativesScreen> {
   Future<void> _loadRelatives() async {
     setState(() => _isLoading = true);
 
-    // Load from local storage
-    _relatives = _storage.getCachedRelatives();
-
-    // TODO: Fetch from API and sync
-
-    setState(() => _isLoading = false);
+    try {
+      _relatives = await _repository.getRelatives();
+      _sortRelatives(_sortBy);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to load relatives: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   Future<void> _addRelative() async {
@@ -68,10 +77,7 @@ class _RelativesScreenState extends State<RelativesScreen> {
     );
 
     if (result != null) {
-      setState(() {
-        _relatives.add(result);
-      });
-      await _storage.cacheRelatives(_relatives);
+      _loadRelatives(); // Reload to get updated list
       _voiceService.speak('${result.name} added successfully.');
     }
   }
@@ -85,13 +91,7 @@ class _RelativesScreenState extends State<RelativesScreen> {
     );
 
     if (result != null) {
-      setState(() {
-        final index = _relatives.indexWhere((r) => r.id == relative.id);
-        if (index != -1) {
-          _relatives[index] = result;
-        }
-      });
-      await _storage.cacheRelatives(_relatives);
+      _loadRelatives();
     }
   }
 
@@ -116,11 +116,19 @@ class _RelativesScreenState extends State<RelativesScreen> {
     );
 
     if (confirm == true) {
-      setState(() {
-        _relatives.removeWhere((r) => r.id == relative.id);
-      });
-      await _storage.cacheRelatives(_relatives);
-      _voiceService.speak('${relative.name} deleted.');
+      try {
+        await _repository.deleteRelative(relative.id);
+        setState(() {
+          _relatives.removeWhere((r) => r.id == relative.id);
+        });
+        _voiceService.speak('${relative.name} deleted.');
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete relative: $e')),
+          );
+        }
+      }
     }
   }
 
@@ -332,7 +340,7 @@ class _AddRelativeSheetState extends State<AddRelativeSheet> {
   final _nameController = TextEditingController();
   final _relationshipController = TextEditingController();
   final _notesController = TextEditingController();
-  final StorageService _storage = StorageService();
+  final RelativesRepository _repository = RelativesRepository();
   final ImagePicker _picker = ImagePicker();
 
   File? _selectedImage;
@@ -347,7 +355,10 @@ class _AddRelativeSheetState extends State<AddRelativeSheet> {
       _relationshipController.text = widget.relative!.relationship;
       _notesController.text = widget.relative!.notes ?? '';
       if (widget.relative!.images.isNotEmpty) {
-        _localImagePath = widget.relative!.images.first.localPath;
+        // For network images, we just show them. Local path might not be valid for network images.
+        // We rely on PersonCard's logic or just show the network image if no local file.
+        // But here we need to show the current image.
+        // We can use the URL from relative.images.first.path
       }
     }
   }
@@ -395,37 +406,58 @@ class _AddRelativeSheetState extends State<AddRelativeSheet> {
 
     setState(() => _isLoading = true);
 
-    String? savedImagePath;
-    if (_selectedImage != null) {
-      final filename = '${DateTime.now().millisecondsSinceEpoch}.jpg';
-      savedImagePath = await _storage.saveImage(_selectedImage!, filename);
+    try {
+      RelativeModel? result;
+
+      if (widget.relative == null) {
+        // Add new relative
+        if (_selectedImage == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please select an image')),
+          );
+          setState(() => _isLoading = false);
+          return;
+        }
+
+        result = await _repository.addRelative(
+          name: _nameController.text.trim(),
+          relationship: _relationshipController.text.trim(),
+          image: _selectedImage!,
+          notes: _notesController.text.trim().isEmpty
+              ? null
+              : _notesController.text.trim(),
+        );
+      } else {
+        // Update existing relative
+        final updatedRelative = widget.relative!.copyWith(
+          name: _nameController.text.trim(),
+          relationship: _relationshipController.text.trim(),
+          notes: _notesController.text.trim().isEmpty
+              ? null
+              : _notesController.text.trim(),
+        );
+
+        result = await _repository.updateRelative(updatedRelative);
+
+        // If image changed, upload it
+        if (_selectedImage != null) {
+          result = await _repository.addPhoto(result.id, _selectedImage!);
+        }
+      }
+
+      if (!mounted) return;
+      Navigator.pop(context, result);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to save: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
-
-    final relative = RelativeModel(
-      id:
-          widget.relative?.id ??
-          DateTime.now().millisecondsSinceEpoch.toString(),
-      name: _nameController.text.trim(),
-      relationship: _relationshipController.text.trim(),
-      addedBy: 'user',
-      forUser: 'user',
-      notes: _notesController.text.trim().isEmpty
-          ? null
-          : _notesController.text.trim(),
-      images: savedImagePath != null
-          ? [
-              PersonImage(
-                filename: 'photo.jpg',
-                path: '',
-                localPath: savedImagePath,
-              ),
-            ]
-          : widget.relative?.images ?? [],
-    );
-
-    setState(() => _isLoading = false);
-    if (!mounted) return;
-    Navigator.pop(context, relative);
   }
 
   @override
@@ -525,6 +557,20 @@ class _AddRelativeSheetState extends State<AddRelativeSheet> {
                         child: ClipOval(
                           child: _selectedImage != null
                               ? Image.file(_selectedImage!, fit: BoxFit.cover)
+                              : (widget.relative?.images.isNotEmpty ?? false)
+                              ? Image.network(
+                                  widget.relative!.images.first.path.startsWith(
+                                        'http',
+                                      )
+                                      ? widget.relative!.images.first.path
+                                      : '${ApiEndpoints.baseUrl}${widget.relative!.images.first.path}',
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, _, _) => const Icon(
+                                    Icons.person,
+                                    size: 50,
+                                    color: AppColors.primaryBlue,
+                                  ),
+                                )
                               : _localImagePath != null
                               ? Image.file(
                                   File(_localImagePath!),

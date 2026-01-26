@@ -9,6 +9,12 @@ import '../presentation/screens/auth/login_screen.dart';
 import '../presentation/screens/auth/signup_screen.dart';
 import '../presentation/screens/auth/forgot_password_screen.dart';
 import '../presentation/screens/main_shell.dart';
+import '../presentation/screens/settings/help_screen.dart';
+import '../presentation/screens/settings/privacy_policy_screen.dart';
+import '../presentation/screens/settings/about_screen.dart';
+import '../presentation/screens/settings/favorites_screen.dart';
+import '../presentation/screens/settings/emergency_contacts_screen.dart';
+import '../presentation/screens/settings/connected_users_screen.dart';
 
 class AppRoutes {
   AppRoutes._();
@@ -28,6 +34,12 @@ class AppRoutes {
   static const String settings = '/settings';
   static const String profile = '/profile';
   static const String editProfile = '/edit-profile';
+  static const String help = '/help';
+  static const String privacy = '/privacy';
+  static const String about = '/about';
+  static const String favorites = '/favorites';
+  static const String emergencyContacts = '/emergency-contacts';
+  static const String connectedUsers = '/connected-users';
 
   /// Generate routes
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -46,6 +58,24 @@ class AppRoutes {
 
       case main:
         return _fadeRoute(const MainShell(), settings);
+
+      case help:
+        return _slideRoute(const HelpScreen(), settings);
+
+      case privacy:
+        return _slideRoute(const PrivacyPolicyScreen(), settings);
+
+      case about:
+        return _slideRoute(const AboutScreen(), settings);
+
+      case favorites:
+        return _slideRoute(const FavoritesScreen(), settings);
+
+      case emergencyContacts:
+        return _slideRoute(const EmergencyContactsScreen(), settings);
+
+      case connectedUsers:
+        return _slideRoute(const ConnectedUsersScreen(), settings);
 
       default:
         return _fadeRoute(const SplashScreen(), settings);

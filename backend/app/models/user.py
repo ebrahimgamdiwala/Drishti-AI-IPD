@@ -54,6 +54,7 @@ class User(Document):
     password: Optional[str] = None  # Optional for Google OAuth users
     name: str
     role: UserRole = UserRole.USER
+    profile_image: Optional[str] = None
     
     # Authentication
     auth_provider: AuthProvider = AuthProvider.LOCAL
@@ -75,6 +76,9 @@ class User(Document):
     
     # Connected users (references to other User IDs)
     connected_users: List[str] = Field(default_factory=list)  # Store as string IDs
+    
+    # Favorite known persons (references to KnownPerson IDs)
+    favorite_persons: List[str] = Field(default_factory=list)
     
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow)

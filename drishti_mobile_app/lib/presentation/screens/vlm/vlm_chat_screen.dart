@@ -116,8 +116,11 @@ class _VLMChatScreenState extends State<VLMChatScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: AppColors.darkBackground,
+      backgroundColor: isDark
+          ? AppColors.darkBackground
+          : AppColors.lightBackground,
       appBar: AppBar(
         title: const Text('AI Vision Chat'),
         backgroundColor: Colors.transparent,
@@ -138,16 +141,21 @@ class _VLMChatScreenState extends State<VLMChatScreen>
       ),
       body: Consumer<VLMProvider>(
         builder: (context, vlm, child) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
           if (!vlm.isReady) {
-            return _buildNotReadyState(vlm);
+            return _buildNotReadyState(vlm, isDark);
           }
-          return _buildChatInterface(vlm);
+          return _buildChatInterface(vlm, isDark);
         },
       ),
     );
   }
 
-  Widget _buildNotReadyState(VLMProvider vlm) {
+  Widget _buildNotReadyState(VLMProvider vlm, bool isDark) {
+    final textColor = isDark ? Colors.white : Colors.black;
+    final secondaryTextColor = isDark ? Colors.white70 : Colors.black54;
+    final bgColor = isDark ? Colors.white24 : Colors.black12;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -166,10 +174,10 @@ class _VLMChatScreenState extends State<VLMChatScreen>
                   : vlm.status == VLMStatus.loading
                   ? 'Loading AI Model...'
                   : 'AI Model Not Ready',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: textColor,
               ),
             ),
             const SizedBox(height: 16),
@@ -179,13 +187,13 @@ class _VLMChatScreenState extends State<VLMChatScreen>
                 children: [
                   LinearProgressIndicator(
                     value: vlm.progress,
-                    backgroundColor: Colors.white24,
+                    backgroundColor: bgColor,
                     valueColor: AlwaysStoppedAnimation(AppColors.primaryBlue),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     '${(vlm.progress * 100).toStringAsFixed(1)}%',
-                    style: const TextStyle(color: Colors.white70),
+                    style: TextStyle(color: secondaryTextColor),
                   ),
                 ],
               )
@@ -216,10 +224,10 @@ class _VLMChatScreenState extends State<VLMChatScreen>
     );
   }
 
-  Widget _buildChatInterface(VLMProvider vlm) {
+  Widget _buildChatInterface(VLMProvider vlm, bool isDark) {
     // If no image selected yet, show image picker prompt
     if (vlm.currentChatImage == null) {
-      return _buildImagePickerPrompt(vlm);
+      return _buildImagePickerPrompt(vlm, isDark);
     }
 
     // Calculate item count: image header + messages + streaming bubble if generating
@@ -235,19 +243,19 @@ class _VLMChatScreenState extends State<VLMChatScreen>
             itemCount: itemCount,
             itemBuilder: (context, index) {
               if (index == 0) {
-                return _buildImageHeader(vlm.currentChatImage!);
+                return _buildImageHeader(vlm.currentChatImage!, isDark);
               }
 
               final messageIndex = index - 1;
 
               // If generating, show streaming bubble at the end
               if (vlm.isGenerating && messageIndex == vlm.chatHistory.length) {
-                return _buildStreamingBubble();
+                return _buildStreamingBubble(isDark);
               }
 
               if (messageIndex < vlm.chatHistory.length) {
                 final message = vlm.chatHistory[messageIndex];
-                return _buildChatBubble(message);
+                return _buildChatBubble(message, isDark);
               }
 
               return const SizedBox.shrink();
@@ -256,12 +264,20 @@ class _VLMChatScreenState extends State<VLMChatScreen>
         ),
 
         // Message input
-        _buildMessageInput(vlm),
+        _buildMessageInput(vlm, isDark),
       ],
     );
   }
 
-  Widget _buildStreamingBubble() {
+  Widget _buildStreamingBubble(bool isDark) {
+    final bubbleBgColor = isDark
+        ? Colors.white.withValues(alpha: 0.1)
+        : Colors.black.withValues(alpha: 0.05);
+    final textColor = isDark ? Colors.white : Colors.black;
+    final borderColor = isDark
+        ? AppColors.primaryBlue.withValues(alpha: 0.3)
+        : AppColors.primaryBlue.withValues(alpha: 0.2);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -282,17 +298,14 @@ class _VLMChatScreenState extends State<VLMChatScreen>
             child: Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
+                color: bubbleBgColor,
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(16),
                   topRight: Radius.circular(16),
                   bottomLeft: Radius.circular(4),
                   bottomRight: Radius.circular(16),
                 ),
-                border: Border.all(
-                  color: AppColors.primaryBlue.withValues(alpha: 0.3),
-                  width: 1,
-                ),
+                border: Border.all(color: borderColor, width: 1),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -303,7 +316,7 @@ class _VLMChatScreenState extends State<VLMChatScreen>
                     Text(
                       _streamingText,
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.9),
+                        color: textColor.withValues(alpha: isDark ? 0.9 : 0.8),
                         height: 1.4,
                       ),
                     ),
@@ -374,7 +387,10 @@ class _VLMChatScreenState extends State<VLMChatScreen>
     );
   }
 
-  Widget _buildImagePickerPrompt(VLMProvider vlm) {
+  Widget _buildImagePickerPrompt(VLMProvider vlm, bool isDark) {
+    final textColor = isDark ? Colors.white : Colors.black;
+    final secondaryTextColor = isDark ? Colors.white54 : Colors.black54;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -387,19 +403,19 @@ class _VLMChatScreenState extends State<VLMChatScreen>
               color: AppColors.primaryBlue.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'Start a Conversation',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: textColor,
               ),
             ),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'Select an image to begin chatting with AI.\nAsk questions about the image and get detailed answers.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white54, height: 1.5),
+              style: TextStyle(color: secondaryTextColor, height: 1.5),
             ),
             const SizedBox(height: 32),
             Row(
@@ -438,12 +454,20 @@ class _VLMChatScreenState extends State<VLMChatScreen>
     );
   }
 
-  Widget _buildImageHeader(File imageFile) {
+  Widget _buildImageHeader(File imageFile, bool isDark) {
+    final borderColor = isDark
+        ? AppColors.primaryBlue.withValues(alpha: 0.3)
+        : AppColors.primaryBlue.withValues(alpha: 0.2);
+    final infoBgColor = isDark
+        ? AppColors.primaryBlue.withValues(alpha: 0.1)
+        : AppColors.primaryBlue.withValues(alpha: 0.05);
+    final infoTextColor = isDark ? Colors.white70 : Colors.black54;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primaryBlue.withValues(alpha: 0.3)),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -455,7 +479,7 @@ class _VLMChatScreenState extends State<VLMChatScreen>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.primaryBlue.withValues(alpha: 0.1),
+              color: infoBgColor,
               borderRadius: const BorderRadius.vertical(
                 bottom: Radius.circular(16),
               ),
@@ -468,10 +492,10 @@ class _VLMChatScreenState extends State<VLMChatScreen>
                   color: AppColors.primaryBlue,
                 ),
                 const SizedBox(width: 8),
-                const Expanded(
+                Expanded(
                   child: Text(
                     'Ask me anything about this image!',
-                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                    style: TextStyle(color: infoTextColor, fontSize: 13),
                   ),
                 ),
               ],
@@ -482,9 +506,20 @@ class _VLMChatScreenState extends State<VLMChatScreen>
     );
   }
 
-  Widget _buildChatBubble(VLMChatMessage message) {
+  Widget _buildChatBubble(VLMChatMessage message, bool isDark) {
     final isUser = message.isUser;
     final isCurrentlySpeaking = _isSpeaking && _speakingMessageId == message.id;
+    final userBubbleColor = AppColors.primaryBlue;
+    final aiBubbleColor = isDark
+        ? Colors.white.withValues(alpha: 0.1)
+        : Colors.black.withValues(alpha: 0.05);
+    final textColor = isDark ? Colors.white : Colors.black;
+    final secondaryTextColor = isDark
+        ? Colors.white.withValues(alpha: 0.6)
+        : Colors.black.withValues(alpha: 0.4);
+    final listenButtonColor = isDark
+        ? Colors.white.withValues(alpha: 0.1)
+        : Colors.black.withValues(alpha: 0.05);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -510,9 +545,7 @@ class _VLMChatScreenState extends State<VLMChatScreen>
             child: Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: isUser
-                    ? AppColors.primaryBlue
-                    : Colors.white.withValues(alpha: 0.1),
+                color: isUser ? userBubbleColor : aiBubbleColor,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(16),
                   topRight: const Radius.circular(16),
@@ -526,9 +559,7 @@ class _VLMChatScreenState extends State<VLMChatScreen>
                   Text(
                     message.content,
                     style: TextStyle(
-                      color: isUser
-                          ? Colors.white
-                          : Colors.white.withValues(alpha: 0.9),
+                      color: isUser ? Colors.white : textColor,
                       height: 1.4,
                     ),
                   ),
@@ -545,7 +576,7 @@ class _VLMChatScreenState extends State<VLMChatScreen>
                             fontSize: 11,
                             color: isUser
                                 ? Colors.white.withValues(alpha: 0.6)
-                                : Colors.white.withValues(alpha: 0.4),
+                                : secondaryTextColor,
                           ),
                         ),
                       // Listen button for AI messages
@@ -561,7 +592,7 @@ class _VLMChatScreenState extends State<VLMChatScreen>
                             decoration: BoxDecoration(
                               color: isCurrentlySpeaking
                                   ? AppColors.primaryBlue.withValues(alpha: 0.3)
-                                  : Colors.white.withValues(alpha: 0.1),
+                                  : listenButtonColor,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Row(
@@ -574,7 +605,13 @@ class _VLMChatScreenState extends State<VLMChatScreen>
                                   size: 14,
                                   color: isCurrentlySpeaking
                                       ? AppColors.primaryBlue
-                                      : Colors.white60,
+                                      : (isDark
+                                            ? Colors.white.withValues(
+                                                alpha: 0.6,
+                                              )
+                                            : Colors.black.withValues(
+                                                alpha: 0.6,
+                                              )),
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
@@ -583,7 +620,13 @@ class _VLMChatScreenState extends State<VLMChatScreen>
                                     fontSize: 11,
                                     color: isCurrentlySpeaking
                                         ? AppColors.primaryBlue
-                                        : Colors.white60,
+                                        : (isDark
+                                              ? Colors.white.withValues(
+                                                  alpha: 0.6,
+                                                )
+                                              : Colors.black.withValues(
+                                                  alpha: 0.6,
+                                                )),
                                   ),
                                 ),
                               ],
@@ -609,14 +652,27 @@ class _VLMChatScreenState extends State<VLMChatScreen>
     );
   }
 
-  Widget _buildMessageInput(VLMProvider vlm) {
+  Widget _buildMessageInput(VLMProvider vlm, bool isDark) {
+    final textColor = isDark ? Colors.white : Colors.black;
+    final hintColor = isDark ? Colors.white38 : Colors.black38;
+    final inputBgColor = isDark
+        ? Colors.white.withValues(alpha: 0.1)
+        : Colors.black.withValues(alpha: 0.05);
+    final inputBorderColor = isDark
+        ? Colors.white.withValues(alpha: 0.1)
+        : Colors.black.withValues(alpha: 0.1);
+    final containerBgColor = isDark
+        ? Colors.black.withValues(alpha: 0.3)
+        : Colors.white.withValues(alpha: 0.1);
+    final containerBorderColor = isDark
+        ? Colors.white.withValues(alpha: 0.1)
+        : Colors.black.withValues(alpha: 0.1);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.3),
-        border: Border(
-          top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-        ),
+        color: containerBgColor,
+        border: Border(top: BorderSide(color: containerBorderColor)),
       ),
       child: SafeArea(
         child: Row(
@@ -628,19 +684,23 @@ class _VLMChatScreenState extends State<VLMChatScreen>
                 enabled: !vlm.isGenerating,
                 decoration: InputDecoration(
                   hintText: 'Ask about the image...',
-                  hintStyle: const TextStyle(color: Colors.white38),
+                  hintStyle: TextStyle(color: hintColor),
                   filled: true,
-                  fillColor: Colors.white.withValues(alpha: 0.1),
+                  fillColor: inputBgColor,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
+                    borderSide: BorderSide(color: inputBorderColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: BorderSide(color: inputBorderColor),
                   ),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 20,
                     vertical: 12,
                   ),
                 ),
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: textColor),
                 textInputAction: TextInputAction.send,
                 onSubmitted: vlm.isGenerating ? null : (_) => _sendMessage(vlm),
               ),

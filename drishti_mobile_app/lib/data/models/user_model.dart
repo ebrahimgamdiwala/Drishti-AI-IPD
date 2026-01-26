@@ -1,5 +1,5 @@
 /// Drishti App - User Model
-/// 
+///
 /// User data model matching FastAPI backend.
 library;
 
@@ -8,6 +8,7 @@ class UserModel {
   final String email;
   final String name;
   final String role;
+  final String? profileImage;
   final bool isEmailVerified;
   final String? authProvider;
   final List<EmergencyContact> emergencyContacts;
@@ -21,6 +22,7 @@ class UserModel {
     required this.email,
     required this.name,
     required this.role,
+    this.profileImage,
     this.isEmailVerified = false,
     this.authProvider,
     this.emergencyContacts = const [],
@@ -36,22 +38,27 @@ class UserModel {
       email: json['email'] ?? '',
       name: json['name'] ?? '',
       role: json['role'] ?? 'user',
+      profileImage: json['profile_image'],
       isEmailVerified: json['is_email_verified'] ?? false,
       authProvider: json['auth_provider'],
-      emergencyContacts: (json['emergency_contacts'] as List<dynamic>?)
-          ?.map((e) => EmergencyContact.fromJson(e))
-          .toList() ?? [],
-      settings: json['settings'] != null 
-          ? UserSettings.fromJson(json['settings']) 
+      emergencyContacts:
+          (json['emergency_contacts'] as List<dynamic>?)
+              ?.map((e) => EmergencyContact.fromJson(e))
+              .toList() ??
+          [],
+      settings: json['settings'] != null
+          ? UserSettings.fromJson(json['settings'])
           : UserSettings(),
-      connectedUsers: (json['connected_users'] as List<dynamic>?)
-          ?.map((e) => e.toString())
-          .toList() ?? [],
-      createdAt: json['created_at'] != null 
-          ? DateTime.tryParse(json['created_at']) 
+      connectedUsers:
+          (json['connected_users'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'])
           : null,
-      lastActive: json['last_active'] != null 
-          ? DateTime.tryParse(json['last_active']) 
+      lastActive: json['last_active'] != null
+          ? DateTime.tryParse(json['last_active'])
           : null,
     );
   }
@@ -62,6 +69,7 @@ class UserModel {
       'email': email,
       'name': name,
       'role': role,
+      'profile_image': profileImage,
       'is_email_verified': isEmailVerified,
       'auth_provider': authProvider,
       'emergency_contacts': emergencyContacts.map((e) => e.toJson()).toList(),
@@ -69,12 +77,13 @@ class UserModel {
       'connected_users': connectedUsers,
     };
   }
-  
+
   UserModel copyWith({
     String? id,
     String? email,
     String? name,
     String? role,
+    String? profileImage,
     bool? isEmailVerified,
     String? authProvider,
     List<EmergencyContact>? emergencyContacts,
@@ -86,6 +95,7 @@ class UserModel {
       email: email ?? this.email,
       name: name ?? this.name,
       role: role ?? this.role,
+      profileImage: profileImage ?? this.profileImage,
       isEmailVerified: isEmailVerified ?? this.isEmailVerified,
       authProvider: authProvider ?? this.authProvider,
       emergencyContacts: emergencyContacts ?? this.emergencyContacts,
@@ -103,12 +113,7 @@ class EmergencyContact {
   final String? phone;
   final String? relationship;
 
-  EmergencyContact({
-    this.name,
-    this.email,
-    this.phone,
-    this.relationship,
-  });
+  EmergencyContact({this.name, this.email, this.phone, this.relationship});
 
   factory EmergencyContact.fromJson(Map<String, dynamic> json) {
     return EmergencyContact(
@@ -133,10 +138,7 @@ class AlertPreferences {
   final bool emailAlerts;
   final bool criticalOnly;
 
-  AlertPreferences({
-    this.emailAlerts = true,
-    this.criticalOnly = false,
-  });
+  AlertPreferences({this.emailAlerts = true, this.criticalOnly = false});
 
   factory AlertPreferences.fromJson(Map<String, dynamic> json) {
     return AlertPreferences(
@@ -146,10 +148,7 @@ class AlertPreferences {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'email_alerts': emailAlerts,
-      'critical_only': criticalOnly,
-    };
+    return {'email_alerts': emailAlerts, 'critical_only': criticalOnly};
   }
 }
 

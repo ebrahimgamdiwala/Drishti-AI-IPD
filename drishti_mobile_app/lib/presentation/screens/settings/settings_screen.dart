@@ -12,7 +12,13 @@ import '../../../core/themes/theme_provider.dart';
 import '../../../data/providers/auth_provider.dart';
 import '../../../data/services/voice_service.dart';
 import '../../../routes/app_routes.dart';
-import 'profile_screen.dart';
+import '../profile/profile_screen.dart';
+import 'help_screen.dart';
+import 'privacy_policy_screen.dart';
+import 'about_screen.dart';
+import 'favorites_screen.dart';
+import 'emergency_contacts_screen.dart';
+import 'connected_users_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -63,6 +69,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   .animate()
                   .fadeIn(delay: 100.ms, duration: 300.ms)
                   .slideY(begin: 0.1, end: 0),
+
+              const SizedBox(height: 24),
+
+              // Connections Section
+              _buildSectionHeader('Connections'),
+              const SizedBox(height: 12),
+
+              _buildSettingsCard([
+                _SettingTile(
+                  icon: Icons.favorite_border,
+                  title: 'Favorites',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const FavoritesScreen(),
+                      ),
+                    );
+                  },
+                ),
+                const Divider(),
+                _SettingTile(
+                  icon: Icons.emergency_outlined,
+                  title: 'Emergency Contacts',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const EmergencyContactsScreen(),
+                      ),
+                    );
+                  },
+                ),
+                const Divider(),
+                _SettingTile(
+                  icon: Icons.people_outline,
+                  title: 'Connected Users',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ConnectedUsersScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ]).animate().fadeIn(delay: 150.ms, duration: 300.ms),
 
               const SizedBox(height: 24),
 
@@ -143,19 +196,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _SettingTile(
                   icon: Icons.info_outline,
                   title: 'About',
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AboutScreen()),
+                    );
+                  },
                 ),
                 const Divider(),
                 _SettingTile(
                   icon: Icons.help_outline,
                   title: AppStrings.help,
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const HelpScreen()),
+                    );
+                  },
                 ),
                 const Divider(),
                 _SettingTile(
                   icon: Icons.privacy_tip_outlined,
                   title: AppStrings.privacyPolicy,
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const PrivacyPolicyScreen(),
+                      ),
+                    );
+                  },
                 ),
               ]).animate().fadeIn(delay: 600.ms, duration: 300.ms),
 

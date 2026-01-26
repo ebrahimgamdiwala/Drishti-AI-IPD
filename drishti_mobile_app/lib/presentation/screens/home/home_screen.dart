@@ -84,56 +84,56 @@ class _HomeScreenState extends State<HomeScreen>
           _pulseController.stop();
 
           // Process the voice command
+          // Process the voice command
           await _processCommand(text);
-
-          setState(() {
-            _isProcessing = false;
-            _statusText = AppStrings.tapToSpeak;
-          });
-        },
-        onError: (error) {
-          setState(() {
-            _isListening = false;
-            _statusText = AppStrings.tapToSpeak;
-          });
-          _pulseController.stop();
-          _voiceService.speak(
-            'Sorry, I could not understand. Please try again.',
-          );
         },
       );
     }
   }
 
   Future<void> _processCommand(String command) async {
-    // TODO: Send to backend for processing
-    await _voiceService.speak('I heard: $command. Processing your request.');
+    // TODO: Implement command processing logic
+    debugPrint('Processing command: $command');
 
-    // Simulate processing
-    await Future.delayed(const Duration(seconds: 2));
-
-    await _voiceService.speak('Command processed successfully.');
-  }
-
-  Future<void> _handleQuickScan() async {
-    if (_isProcessing) return;
-
-    setState(() {
-      _isProcessing = true;
-      _statusText = 'Scanning...';
-    });
-
-    await _voiceService.speak('Starting quick scan of your surroundings.');
-
-    // TODO: Capture camera and send to backend
-    await Future.delayed(const Duration(seconds: 2));
-
-    await _voiceService.speak('Scan complete. No obstacles detected ahead.');
+    await Future.delayed(const Duration(seconds: 1)); // Simulate processing
 
     setState(() {
       _isProcessing = false;
       _statusText = AppStrings.tapToSpeak;
     });
+
+    await _voiceService.speak('I heard: $command');
+  }
+
+  void _handleQuickScan() {
+    // TODO: Implement quick scan
+    debugPrint('Quick scan tapped');
+    _voiceService.speak('Starting quick scan');
+  }
+
+  Widget _buildPulseRing(int index, double value) {
+    final double size = 120 + (index * 30.0);
+    final double opacity = (1.0 - value) * 0.5;
+
+    return ScaleTransition(
+      scale: Tween<double>(begin: 0.8, end: 1.2).animate(
+        CurvedAnimation(
+          parent: _pulseController,
+          curve: Interval(index * 0.2, 1.0, curve: Curves.easeOut),
+        ),
+      ),
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: AppColors.primaryBlue.withValues(alpha: opacity),
+            width: 2,
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -244,24 +244,11 @@ class _HomeScreenState extends State<HomeScreen>
                         return Stack(
                           alignment: Alignment.center,
                           children: [
-                            // Outer pulse ring (only when listening)
-                            if (_isListening)
-                              Transform.scale(
-                                scale: 1.0 + (_pulseController.value * 0.4),
-                                child: Container(
-                                  width: 140,
-                                  height: 140,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: AppColors.gradientStart.withValues(
-                                        alpha: 1.0 - _pulseController.value,
-                                      ),
-                                      width: 3,
-                                    ),
-                                  ),
-                                ),
-                              ),
+                            // Soundwave animation (multiple rings)
+                            if (_isListening) ...[
+                              for (int i = 0; i < 3; i++)
+                                _buildPulseRing(i, _pulseController.value),
+                            ],
 
                             // Main button
                             Container(

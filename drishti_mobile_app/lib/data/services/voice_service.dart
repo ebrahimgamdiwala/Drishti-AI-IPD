@@ -3,6 +3,7 @@
 /// Text-to-speech and speech-to-text for accessibility.
 library;
 
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_to_text.dart';
@@ -49,6 +50,10 @@ class VoiceService {
       // TTS initialization failed
     }
   }
+
+  // Audio Level Stream
+  final _audioLevelController = StreamController<double>.broadcast();
+  Stream<double> get audioLevelStream => _audioLevelController.stream;
 
   /// Initialize STT engine
   Future<bool> initStt() async {
@@ -162,6 +167,9 @@ class VoiceService {
             _isListening = false;
           }
         },
+        onSoundLevelChange: (level) {
+          _audioLevelController.add(level);
+        },
         listenFor: listenFor ?? const Duration(seconds: 10),
         pauseFor: const Duration(seconds: 3),
         listenOptions: SpeechListenOptions(
@@ -221,5 +229,6 @@ class VoiceService {
       await _tts.stop();
       await _stt.stop();
     }
+    _audioLevelController.close();
   }
 }

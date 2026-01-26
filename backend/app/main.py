@@ -66,15 +66,14 @@ app.mount("/uploads", StaticFiles(directory=uploads_path), name="uploads")
 
 
 # Import and register routers
-from app.routers import auth, users, model, alerts, known_persons, admin, subscriptions
+from app.routers import auth, users, model, relatives, favorites, content
 
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(model.router)
-app.include_router(alerts.router)
-app.include_router(known_persons.router)
-app.include_router(admin.router)
-app.include_router(subscriptions.router)
+app.include_router(relatives.router)
+app.include_router(favorites.router)
+app.include_router(content.router)
 
 
 # Health check endpoint
