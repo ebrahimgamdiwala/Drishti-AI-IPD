@@ -12,6 +12,7 @@ import 'core/themes/theme_provider.dart';
 import 'data/providers/auth_provider.dart';
 import 'data/providers/user_provider.dart';
 import 'data/providers/vlm_provider.dart';
+import 'data/providers/voice_navigation_provider.dart';
 import 'data/services/storage_service.dart';
 import 'data/services/voice_service.dart';
 import 'routes/app_routes.dart';
@@ -49,6 +50,10 @@ void main() async {
 class DrishtiApp extends StatelessWidget {
   const DrishtiApp({super.key});
 
+  // Global navigator key for voice navigation
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
+
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
@@ -65,35 +70,60 @@ class DrishtiApp extends StatelessWidget {
         // VLM (Vision Language Model) provider
         ChangeNotifierProvider(create: (_) => VLMProvider()),
       ],
-      child: Consumer<ThemeProvider>(
-        builder: (context, themeProvider, child) {
-          return MaterialApp(
-            title: 'Drishti',
-            debugShowCheckedModeBanner: false,
-
-            // Theme - Glassmorphism
-            theme: themeProvider.themeData,
-            darkTheme: themeProvider.themeData,
-            themeMode: ThemeMode.system,
-
-            // Routes
-            initialRoute: AppRoutes.splash,
-            onGenerateRoute: AppRoutes.generateRoute,
-
-            // Accessibility
-            builder: (context, child) {
-              return MediaQuery(
-                // Respect system text scale factor for accessibility
-                data: MediaQuery.of(context).copyWith(
-                  textScaler: TextScaler.linear(
-                    MediaQuery.of(
-                      context,
-                    ).textScaler.scale(1.0).clamp(1.0, 1.3),
-                  ),
+      child: Builder(
+        builder: (context) {
+          return MultiProvider(
+            providers: [
+              // Voice Navigation provider with callbacks
+              ChangeNotifierProvider(
+                create: (_) => VoiceNavigationProvider(
+                  navigatorKey: navigatorKey,
+                  onToggleTheme: () {
+                    context.read<ThemeProvider>().toggleTheme();
+                  },
+                  onSetTheme: (themeType) {
+                    if (themeType == 'dark') {
+                      context.read<ThemeProvider>().setTheme(ThemeType.dark);
+                    } else if (themeType == 'light') {
+                      context.read<ThemeProvider>().setTheme(ThemeType.light);
+                    }
+                  },
                 ),
-                child: child!,
-              );
-            },
+              ),
+            ],
+            child: Consumer<ThemeProvider>(
+              builder: (context, themeProvider, child) {
+                return MaterialApp(
+                  title: 'Drishti',
+                  debugShowCheckedModeBanner: false,
+                  navigatorKey: navigatorKey,
+
+                  // Theme - Glassmorphism
+                  theme: themeProvider.themeData,
+                  darkTheme: themeProvider.themeData,
+                  themeMode: ThemeMode.system,
+
+                  // Routes
+                  initialRoute: AppRoutes.splash,
+                  onGenerateRoute: AppRoutes.generateRoute,
+
+                  // Accessibility
+                  builder: (context, child) {
+                    return MediaQuery(
+                      // Respect system text scale factor for accessibility
+                      data: MediaQuery.of(context).copyWith(
+                        textScaler: TextScaler.linear(
+                          MediaQuery.of(
+                            context,
+                          ).textScaler.scale(1.0).clamp(1.0, 1.3),
+                        ),
+                      ),
+                      child: child!,
+                    );
+                  },
+                );
+              },
+            ),
           );
         },
       ),

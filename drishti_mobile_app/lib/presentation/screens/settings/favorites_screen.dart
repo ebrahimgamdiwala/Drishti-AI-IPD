@@ -135,7 +135,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                             ? images.first['path']
                             : '${ApiEndpoints.baseUrl}${images.first['path']}',
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, _) => _buildPlaceholder(),
+                        errorBuilder: (_, _, _) => _buildPlaceholder(),
                       )
                     : _buildPlaceholder(),
               ),

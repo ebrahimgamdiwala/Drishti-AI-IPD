@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/providers/vlm_provider.dart';
 import '../../../data/services/local_vlm_service.dart';
+import '../../../routes/app_routes.dart';
 
 class ModelDownloadScreen extends StatefulWidget {
   final VoidCallback? onModelReady;
@@ -57,6 +58,13 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen> {
           _statusMessage = 'Model ready!';
           _isDownloading = false;
         });
+        
+        // Navigate to main screen after model is ready
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, AppRoutes.main);
+        }
+        
         widget.onModelReady?.call();
       }
     } catch (e) {

@@ -274,7 +274,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                             ? Image.network(
                                 user.profileImage!,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, _) => _buildPlaceholder(),
+                                errorBuilder: (_, _, _) => _buildPlaceholder(),
                               )
                             : _buildPlaceholder(),
                       ),

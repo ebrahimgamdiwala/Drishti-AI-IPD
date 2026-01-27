@@ -36,17 +36,6 @@ class _RelativesScreenState extends State<RelativesScreen> {
   void initState() {
     super.initState();
     _loadRelatives();
-    _announceScreen();
-  }
-
-  Future<void> _announceScreen() async {
-    await _voiceService.initTts();
-    Future.delayed(const Duration(milliseconds: 500), () {
-      _voiceService.speak(
-        'Relatives screen. You have ${_relatives.length} relatives registered. '
-        'Tap add button to add a new relative.',
-      );
-    });
   }
 
   Future<void> _loadRelatives() async {

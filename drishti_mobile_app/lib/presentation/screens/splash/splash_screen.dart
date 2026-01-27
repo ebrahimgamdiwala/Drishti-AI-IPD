@@ -9,9 +9,12 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/providers/auth_provider.dart';
+import '../../../data/providers/vlm_provider.dart';
 import '../../../routes/app_routes.dart';
+import '../onboarding/permissions_screen.dart';
 import '../auth/login_screen.dart';
 import '../main_shell.dart';
 
@@ -32,6 +35,7 @@ class _SplashScreenState extends State<SplashScreen>
   bool _isExpanding = false;
   bool _isAuthenticated = false;
   bool _showDestination = false;
+  Widget? _destinationWidget;
   double _expandProgress = 0.0;
 
   @override
@@ -104,9 +108,48 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (!mounted) return;
 
+    // Determine destination based on auth and permissions
+    Widget destinationScreen;
+    String destinationRoute;
+
+    if (!_isAuthenticated) {
+      // Not logged in - go to login
+      destinationScreen = const LoginScreen();
+      destinationRoute = AppRoutes.login;
+    } else {
+      // Logged in - check permissions
+      final cameraGranted = await Permission.camera.isGranted;
+      final micGranted = await Permission.microphone.isGranted;
+
+      if (!cameraGranted || !micGranted) {
+        // Permissions not granted - go to permissions screen
+        destinationScreen = const PermissionsScreen();
+        destinationRoute = AppRoutes.permissions;
+      } else {
+        // Permissions granted - check model and go to main
+        // ignore: use_build_context_synchronously
+        final vlmProvider = context.read<VLMProvider>();
+        final modelsDownloaded = await vlmProvider.areModelsDownloaded;
+
+        if (modelsDownloaded) {
+          // Models exist - go to main
+          destinationScreen = const MainShell();
+          destinationRoute = AppRoutes.main;
+        } else {
+          // Models don't exist - go to download screen
+          destinationScreen =
+              const PermissionsScreen(); // Will redirect to download
+          destinationRoute = AppRoutes.modelDownload;
+        }
+      }
+    }
+
+    if (!mounted) return;
+
     // Show destination screen underneath before expanding
     setState(() {
       _showDestination = true;
+      _destinationWidget = destinationScreen;
     });
 
     // Small delay to ensure destination is rendered
@@ -141,11 +184,8 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (!mounted) return;
 
-    // Navigate after expansion complete
-    Navigator.pushReplacementNamed(
-      context,
-      _isAuthenticated ? AppRoutes.main : AppRoutes.login,
-    );
+    // Navigate to determined destination
+    Navigator.pushReplacementNamed(context, destinationRoute);
   }
 
   @override
@@ -168,10 +208,8 @@ class _SplashScreenState extends State<SplashScreen>
       body: Stack(
         children: [
           // Destination screen (shown underneath during reveal)
-          if (_showDestination)
-            Positioned.fill(
-              child: _isAuthenticated ? const MainShell() : const LoginScreen(),
-            ),
+          if (_showDestination && _destinationWidget != null)
+            Positioned.fill(child: _destinationWidget!),
 
           // Splash overlay with circular clip
           if (!_isExpanding || _expandProgress < 1.0)

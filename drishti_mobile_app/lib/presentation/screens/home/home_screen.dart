@@ -9,7 +9,9 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../data/providers/auth_provider.dart';
-import '../../../data/services/voice_service.dart';
+import '../../../data/providers/voice_navigation_provider.dart';
+import '../../../data/models/voice_navigation/microphone_state.dart';
+import '../../widgets/voice_navigation/voice_navigation_widgets.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,10 +22,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
-  final VoiceService _voiceService = VoiceService();
-  bool _isListening = false;
-  bool _isProcessing = false;
-  String _statusText = AppStrings.tapToSpeak;
   late AnimationController _pulseController;
 
   @override
@@ -33,19 +31,6 @@ class _HomeScreenState extends State<HomeScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     );
-    _initVoice();
-  }
-
-  Future<void> _initVoice() async {
-    await _voiceService.initTts();
-    await _voiceService.initStt();
-
-    // Announce screen on first load
-    Future.delayed(const Duration(milliseconds: 500), () {
-      _voiceService.speak(
-        'Home screen. Tap the large button to speak a command or scan your surroundings.',
-      );
-    });
   }
 
   @override
@@ -54,91 +39,44 @@ class _HomeScreenState extends State<HomeScreen>
     super.dispose();
   }
 
-  Future<void> _handleMicTap() async {
-    if (_isProcessing) return;
+  /// Handle microphone button tap - delegates to VoiceNavigationProvider
+  Future<void> _handleMicTap(VoiceNavigationProvider voiceNav) async {
+    await voiceNav.onMicrophoneTap();
+  }
 
-    if (_isListening) {
-      // Stop listening
-      await _voiceService.stopListening();
-      setState(() {
-        _isListening = false;
-        _statusText = AppStrings.tapToSpeak;
-      });
-      _pulseController.stop();
-      _pulseController.reset();
-    } else {
-      // Start listening
-      setState(() {
-        _isListening = true;
-        _statusText = AppStrings.listening;
-      });
-      _pulseController.repeat();
+  /// Handle quick scan - uses voice navigation for vision intent
+  Future<void> _handleQuickScan(VoiceNavigationProvider voiceNav) async {
+    // Trigger a vision scan via voice command
+    await voiceNav.processVoiceCommand('scan surroundings');
+  }
 
-      await _voiceService.startListening(
-        onResult: (text) async {
-          setState(() {
-            _isListening = false;
-            _isProcessing = true;
-            _statusText = AppStrings.processing;
-          });
-          _pulseController.stop();
-
-          // Process the voice command
-          // Process the voice command
-          await _processCommand(text);
-        },
-      );
+  /// Get status text based on microphone state
+  String _getStatusText(MicrophoneState state) {
+    switch (state) {
+      case MicrophoneState.idle:
+        return AppStrings.tapToSpeak;
+      case MicrophoneState.listening:
+        return AppStrings.listening;
+      case MicrophoneState.processing:
+        return AppStrings.processing;
+      case MicrophoneState.speaking:
+        return 'Speaking...';
     }
-  }
-
-  Future<void> _processCommand(String command) async {
-    // TODO: Implement command processing logic
-    debugPrint('Processing command: $command');
-
-    await Future.delayed(const Duration(seconds: 1)); // Simulate processing
-
-    setState(() {
-      _isProcessing = false;
-      _statusText = AppStrings.tapToSpeak;
-    });
-
-    await _voiceService.speak('I heard: $command');
-  }
-
-  void _handleQuickScan() {
-    // TODO: Implement quick scan
-    debugPrint('Quick scan tapped');
-    _voiceService.speak('Starting quick scan');
-  }
-
-  Widget _buildPulseRing(int index, double value) {
-    final double size = 120 + (index * 30.0);
-    final double opacity = (1.0 - value) * 0.5;
-
-    return ScaleTransition(
-      scale: Tween<double>(begin: 0.8, end: 1.2).animate(
-        CurvedAnimation(
-          parent: _pulseController,
-          curve: Interval(index * 0.2, 1.0, curve: Curves.easeOut),
-        ),
-      ),
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: AppColors.primaryBlue.withValues(alpha: opacity),
-            width: 2,
-          ),
-        ),
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
+    final voiceNav = context.watch<VoiceNavigationProvider>();
+    final micState = voiceNav.microphoneState;
+    
+    // Control pulse animation based on microphone state
+    if (micState == MicrophoneState.listening && !_pulseController.isAnimating) {
+      _pulseController.repeat();
+    } else if (micState != MicrophoneState.listening && _pulseController.isAnimating) {
+      _pulseController.stop();
+      _pulseController.reset();
+    }
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -232,53 +170,13 @@ class _HomeScreenState extends State<HomeScreen>
 
             const Spacer(),
 
-            // Microphone button
-            GestureDetector(
-                  onTap: _handleMicTap,
-                  child: Semantics(
-                    label: AppStrings.microphoneButton,
-                    button: true,
-                    child: AnimatedBuilder(
-                      animation: _pulseController,
-                      builder: (context, child) {
-                        return Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            // Soundwave animation (multiple rings)
-                            if (_isListening) ...[
-                              for (int i = 0; i < 3; i++)
-                                _buildPulseRing(i, _pulseController.value),
-                            ],
-
-                            // Main button
-                            Container(
-                              width: 120,
-                              height: 120,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: AppColors.primaryGradient,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.primaryBlue.withValues(
-                                      alpha: 0.4,
-                                    ),
-                                    blurRadius: 20,
-                                    offset: const Offset(0, 8),
-                                  ),
-                                ],
-                              ),
-                              child: Icon(
-                                _isListening ? Icons.mic : Icons.mic_none,
-                                color: Colors.white,
-                                size: 50,
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                )
+            // Microphone button with voice navigation integration
+            MicrophoneButton(
+              state: micState,
+              onTap: () => _handleMicTap(voiceNav),
+              size: 120,
+              showLabel: false,
+            )
                 .animate()
                 .fadeIn(delay: 200.ms, duration: 500.ms)
                 .scale(
@@ -291,9 +189,11 @@ class _HomeScreenState extends State<HomeScreen>
 
             // Status text
             Text(
-              _statusText,
+              _getStatusText(micState),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: _isListening ? AppColors.primaryBlue : null,
+                color: micState == MicrophoneState.listening 
+                    ? AppColors.primaryBlue 
+                    : null,
               ),
             ).animate().fadeIn(delay: 300.ms, duration: 300.ms),
 
@@ -304,7 +204,7 @@ class _HomeScreenState extends State<HomeScreen>
               label: AppStrings.scanButton,
               button: true,
               child: TextButton.icon(
-                onPressed: _handleQuickScan,
+                onPressed: () => _handleQuickScan(voiceNav),
                 icon: const Icon(Icons.camera_alt_outlined),
                 label: const Text(AppStrings.quickScan),
                 style: TextButton.styleFrom(
@@ -319,44 +219,107 @@ class _HomeScreenState extends State<HomeScreen>
 
             const Spacer(),
 
-            // Quick tips
-            Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Quick Tips',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w600),
+            // Test buttons for STT workaround
+            if (!voiceNav.isSpeechRecognitionAvailable)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Test Voice Commands',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.warning,
                       ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        height: 80,
-                        child: ListView(
-                          scrollDirection: Axis.horizontal,
-                          children: [
-                            _TipCard(
-                              text: 'Say: "Show obstacles"',
-                              icon: Icons.remove_red_eye,
-                            ),
-                            _TipCard(
-                              text: 'Say: "Who is near?"',
-                              icon: Icons.people,
-                            ),
-                            _TipCard(
-                              text: 'Say: "Read text"',
-                              icon: Icons.text_fields,
-                            ),
-                          ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Speech recognition unavailable. Use test buttons:',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondaryLight,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _TestCommandButton(
+                          label: 'Scan',
+                          command: 'scan surroundings',
+                          icon: Icons.camera_alt,
+                          onPressed: () => voiceNav.processVoiceCommand('scan surroundings'),
                         ),
-                      ),
-                    ],
-                  ),
-                )
-                .animate()
-                .fadeIn(delay: 500.ms, duration: 500.ms)
-                .slideY(begin: 0.2, end: 0),
+                        _TestCommandButton(
+                          label: 'Dashboard',
+                          command: 'go to dashboard',
+                          icon: Icons.dashboard,
+                          onPressed: () => voiceNav.processVoiceCommand('go to dashboard'),
+                        ),
+                        _TestCommandButton(
+                          label: 'Settings',
+                          command: 'go to settings',
+                          icon: Icons.settings,
+                          onPressed: () => voiceNav.processVoiceCommand('go to settings'),
+                        ),
+                        _TestCommandButton(
+                          label: 'Relatives',
+                          command: 'show relatives',
+                          icon: Icons.people,
+                          onPressed: () => voiceNav.processVoiceCommand('show relatives'),
+                        ),
+                        _TestCommandButton(
+                          label: 'Activity',
+                          command: 'show activity',
+                          icon: Icons.history,
+                          onPressed: () => voiceNav.processVoiceCommand('show activity'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ).animate().fadeIn(delay: 400.ms, duration: 500.ms),
+
+            // Quick tips
+            if (voiceNav.isSpeechRecognitionAvailable)
+              Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Quick Tips',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          height: 80,
+                          child: ListView(
+                            scrollDirection: Axis.horizontal,
+                            children: [
+                              _TipCard(
+                                text: 'Say: "Show obstacles"',
+                                icon: Icons.remove_red_eye,
+                              ),
+                              _TipCard(
+                                text: 'Say: "Who is near?"',
+                                icon: Icons.people,
+                              ),
+                              _TipCard(
+                                text: 'Say: "Read text"',
+                                icon: Icons.text_fields,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                  .animate()
+                  .fadeIn(delay: 500.ms, duration: 500.ms)
+                  .slideY(begin: 0.2, end: 0),
 
             const SizedBox(height: 20),
           ],
@@ -396,6 +359,48 @@ class _TipCard extends StatelessWidget {
             ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _TestCommandButton extends StatelessWidget {
+  final String label;
+  final String command;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  const _TestCommandButton({
+    required this.label,
+    required this.command,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Semantics(
+      label: 'Test command: $command',
+      button: true,
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon, size: 18),
+        label: Text(label),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: isDark 
+              ? AppColors.darkCard 
+              : AppColors.lightCard,
+          foregroundColor: AppColors.primaryBlue,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: AppColors.primaryBlue.withValues(alpha: 0.3),
+            ),
+          ),
+        ),
       ),
     );
   }

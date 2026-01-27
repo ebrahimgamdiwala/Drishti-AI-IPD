@@ -38,6 +38,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _voiceSpeed = _voiceService.speechRate;
+
+    // Note: Screen announcement is handled by MainShell
   }
 
   @override

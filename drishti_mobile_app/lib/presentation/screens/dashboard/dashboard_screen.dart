@@ -26,6 +26,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   };
 
   @override
+  void initState() {
+    super.initState();
+
+    // Note: Screen announcement is handled by MainShell
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,

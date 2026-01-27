@@ -5,6 +5,8 @@ library;
 
 import 'package:flutter/material.dart';
 import '../presentation/screens/splash/splash_screen.dart';
+import '../presentation/screens/onboarding/permissions_screen.dart';
+import '../presentation/screens/vlm/model_download_screen.dart';
 import '../presentation/screens/auth/login_screen.dart';
 import '../presentation/screens/auth/signup_screen.dart';
 import '../presentation/screens/auth/forgot_password_screen.dart';
@@ -21,6 +23,8 @@ class AppRoutes {
 
   // Route names
   static const String splash = '/';
+  static const String permissions = '/permissions';
+  static const String modelDownload = '/model-download';
   static const String login = '/login';
   static const String signup = '/signup';
   static const String forgotPassword = '/forgot-password';
@@ -46,6 +50,12 @@ class AppRoutes {
     switch (settings.name) {
       case splash:
         return _fadeRoute(const SplashScreen(), settings);
+
+      case permissions:
+        return _fadeRoute(const PermissionsScreen(), settings);
+
+      case modelDownload:
+        return _fadeRoute(const ModelDownloadScreen(), settings);
 
       case login:
         return _revealRoute(const LoginScreen(), settings);
