@@ -52,7 +52,7 @@ class AudioFeedbackEngine {
   bool _isProcessing = false;
 
   AudioFeedbackEngine({required VoiceService voiceService})
-      : _voiceService = voiceService;
+    : _voiceService = voiceService;
 
   /// Speak a message (queued based on priority)
   ///
@@ -204,10 +204,7 @@ class AudioFeedbackEngine {
 
     for (final phrase in fillerPhrases) {
       // Remove at the beginning of the text
-      result = result.replaceAll(
-        RegExp('^$phrase', caseSensitive: false),
-        '',
-      );
+      result = result.replaceAll(RegExp('^$phrase', caseSensitive: false), '');
 
       // Remove after sentence boundaries
       result = result.replaceAll(
@@ -234,10 +231,7 @@ class AudioFeedbackEngine {
     final sentences = text.split(RegExp(r'[.!?]+\s*'));
 
     // Filter out empty sentences and trim
-    return sentences
-        .map((s) => s.trim())
-        .where((s) => s.isNotEmpty)
-        .toList();
+    return sentences.map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
   }
 
   /// Prioritize safety information in sentences
@@ -282,7 +276,9 @@ class AudioFeedbackEngine {
 
     for (final sentence in sentences) {
       final lowerSentence = sentence.toLowerCase();
-      final isSafety = safetyKeywords.any((keyword) => lowerSentence.contains(keyword));
+      final isSafety = safetyKeywords.any(
+        (keyword) => lowerSentence.contains(keyword),
+      );
 
       if (isSafety) {
         safetySentences.add(sentence);
@@ -401,17 +397,19 @@ class AudioFeedbackEngine {
   /// Check if error is related to timeout
   bool _isTimeoutError(String error) {
     // Only treat as timeout if it's not a network/connection timeout
-    final hasTimeout = error.contains('timeout') ||
+    final hasTimeout =
+        error.contains('timeout') ||
         error.contains('timed out') ||
         error.contains('time out') ||
         error.contains('taking too long');
-    
+
     // Exclude if it's clearly a network timeout
-    final isNetworkTimeout = error.contains('connection') ||
+    final isNetworkTimeout =
+        error.contains('connection') ||
         error.contains('network') ||
         error.contains('http') ||
         error.contains('api');
-    
+
     return hasTimeout && !isNetworkTimeout;
   }
 
@@ -427,9 +425,13 @@ class AudioFeedbackEngine {
 
   /// Extract permission type from error message
   String _extractPermissionType(String error) {
-    if (error.contains('microphone') || error.contains('audio') || error.contains('record')) {
+    if (error.contains('microphone') ||
+        error.contains('audio') ||
+        error.contains('record')) {
       return 'Microphone';
-    } else if (error.contains('camera') || error.contains('photo') || error.contains('video')) {
+    } else if (error.contains('camera') ||
+        error.contains('photo') ||
+        error.contains('video')) {
       return 'Camera';
     } else if (error.contains('location') || error.contains('gps')) {
       return 'Location';
@@ -485,10 +487,7 @@ class AudioFeedbackEngine {
     );
 
     // Remove class/method references (e.g., ClassName.methodName)
-    formatted = formatted.replaceAll(
-      RegExp(r'\b[A-Z]\w+\.\w+\b'),
-      '',
-    );
+    formatted = formatted.replaceAll(RegExp(r'\b[A-Z]\w+\.\w+\b'), '');
 
     // Clean up multiple spaces and trim
     formatted = formatted.replaceAll(RegExp(r'\s+'), ' ').trim();
@@ -631,6 +630,18 @@ class AudioFeedbackEngine {
 
   /// Get the number of messages in the queue
   int get queueLength => _messageQueue.length;
+
+  /// Stop speaking immediately
+  Future<void> stopSpeaking() async {
+    try {
+      await _voiceService.stopSpeaking();
+      _isSpeaking = false;
+      _messageQueue.clear();
+      debugPrint('[AudioFeedback] Speaking stopped');
+    } catch (e) {
+      debugPrint('[AudioFeedback] Error stopping speech: $e');
+    }
+  }
 
   /// Dispose resources
   void dispose() {

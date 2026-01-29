@@ -23,11 +23,15 @@ class VoiceService {
   bool _isHotwordListening = false;
   bool _hotwordDetected = false;
   bool _isContinuousListening = false;
+  bool _isRestarting = false; // Prevent overlapping restarts
   Timer? _hotwordTimer;
   Timer? _continuousRestartTimer;
+  DateTime? _lastRestartTime; // Track last restart to prevent rapid restarts
 
   // Track restart attempts to implement exponential backoff
   int _restartAttempts = 0;
+  static const int _maxRestartAttempts = 10; // Cap maximum attempts
+  static const int _minRestartDelayMs = 1500; // Minimum delay between restarts
 
   double _speechRate = 0.5; // 0.0 to 1.0
   double _pitch = 1.0; // 0.5 to 2.0
@@ -90,14 +94,31 @@ class VoiceService {
         onError: (error) {
           debugPrint('[VoiceService] STT Error: ${error.errorMsg}');
           _isListening = false;
-          // Don't immediately restart on error - let the continuous listener handle it
+
+          // Handle specific errors
+          if (error.errorMsg == 'error_busy') {
+            // STT is busy, wait longer before restart
+            debugPrint('[VoiceService] ⚠️ STT busy, increasing backoff...');
+            _restartAttempts = (_restartAttempts + 2).clamp(
+              0,
+              _maxRestartAttempts,
+            );
+          } else if (error.errorMsg == 'error_no_match') {
+            // No speech detected - this is normal, just continue
+            debugPrint('[VoiceService] ℹ️ No speech detected (normal)');
+          } else if (error.errorMsg == 'error_speech_timeout') {
+            // Speech timeout - normal when no one is talking
+            debugPrint('[VoiceService] ℹ️ Speech timeout (normal)');
+          }
+
+          // Don't trigger restart here - let status handler manage it
         },
         onStatus: (status) {
           debugPrint('[VoiceService] STT Status: $status');
           if (status == 'done' || status == 'notListening') {
             _isListening = false;
             // If we're in continuous mode and not processing a hotword, restart
-            if (_isContinuousListening && !_hotwordDetected) {
+            if (_isContinuousListening && !_hotwordDetected && !_isRestarting) {
               _scheduleContinuousRestart();
             }
           } else if (status == 'listening') {
@@ -279,29 +300,59 @@ class VoiceService {
 
   /// Schedule a restart for continuous listening with exponential backoff
   void _scheduleContinuousRestart() {
+    // Cancel any existing restart timer
     _continuousRestartTimer?.cancel();
 
-    if (!_isContinuousListening || _hotwordDetected) {
+    if (!_isContinuousListening || _hotwordDetected || _isRestarting) {
       return;
+    }
+
+    // Check if we're restarting too quickly
+    final now = DateTime.now();
+    if (_lastRestartTime != null) {
+      final timeSinceLastRestart = now
+          .difference(_lastRestartTime!)
+          .inMilliseconds;
+      if (timeSinceLastRestart < _minRestartDelayMs) {
+        // We're restarting too quickly, add extra delay
+        debugPrint('[VoiceService] ⚠️ Restart too quick, adding delay...');
+      }
+    }
+
+    // Cap restart attempts to prevent infinite loops, but keep it running
+    if (_restartAttempts >= _maxRestartAttempts) {
+      debugPrint(
+        '[VoiceService] ⚠️ Max restart attempts reached, resetting counter...',
+      );
+      _restartAttempts = 0; // Reset to keep continuous listening going
     }
 
     _restartAttempts++;
 
-    // Exponential backoff: 500ms, 1s, 2s, 4s, 8s, then cap at 8s
-    final delay = Duration(
-      milliseconds: (500 * (1 << (_restartAttempts - 1).clamp(0, 4))).clamp(
-        500,
-        8000,
-      ),
-    );
+    // Use shorter delays for more responsive continuous listening (like Google Assistant)
+    // 800ms, 1s, 1.2s, 1.5s, 2s (capped) - much faster than before
+    final baseDelay = 800; // Start with 800ms instead of 1500ms
+    final multiplier = 1 + (_restartAttempts * 0.2).clamp(0.0, 1.5);
+    final delayMs = (baseDelay * multiplier).clamp(800, 2000).toInt();
+    final delay = Duration(milliseconds: delayMs);
 
     debugPrint(
       '[VoiceService] 🔄 Scheduling restart in ${delay.inMilliseconds}ms (attempt $_restartAttempts)',
     );
 
-    _continuousRestartTimer = Timer(delay, () {
-      if (_isContinuousListening && !_hotwordDetected) {
-        _startContinuousListenCycle();
+    _continuousRestartTimer = Timer(delay, () async {
+      if (_isContinuousListening && !_hotwordDetected && !_isRestarting) {
+        _isRestarting = true;
+        _lastRestartTime = DateTime.now();
+
+        // Ensure STT is fully stopped before restarting
+        if (_stt.isListening) {
+          await _stt.stop();
+          await Future.delayed(const Duration(milliseconds: 200));
+        }
+
+        await _startContinuousListenCycle();
+        _isRestarting = false;
       }
     });
   }
@@ -363,6 +414,17 @@ class VoiceService {
       return;
     }
 
+    // Additional guard: wait if we just stopped
+    if (_lastRestartTime != null) {
+      final timeSince = DateTime.now()
+          .difference(_lastRestartTime!)
+          .inMilliseconds;
+      if (timeSince < 500) {
+        debugPrint('[VoiceService] Too soon after last restart, waiting...');
+        await Future.delayed(Duration(milliseconds: 500 - timeSince));
+      }
+    }
+
     debugPrint('[VoiceService] 🎧 Starting continuous listen cycle...');
     _hotwordDetected = false;
 
@@ -374,10 +436,10 @@ class VoiceService {
         onSoundLevelChange: (level) {
           _audioLevelController.add(level);
         },
-        // Use maximum duration - Android allows up to 60 seconds
-        listenFor: const Duration(seconds: 59),
-        // Long pause detection so we don't stop on brief silences
-        pauseFor: const Duration(seconds: 10),
+        // Infinite listening - no timeout (like Google Assistant)
+        listenFor: const Duration(hours: 24),
+        // Very long pause detection - won't stop on brief silences
+        pauseFor: const Duration(seconds: 30),
         listenOptions: SpeechListenOptions(
           partialResults: true, // Essential for continuous hotword detection
           cancelOnError: false, // Don't cancel on minor errors

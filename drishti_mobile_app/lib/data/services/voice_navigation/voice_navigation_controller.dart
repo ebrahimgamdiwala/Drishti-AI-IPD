@@ -634,9 +634,55 @@ class VoiceNavigationController extends ChangeNotifier {
   void _onFeatureAction(FeatureAction action, Map<String, dynamic> params) {
     debugPrint('[VoiceNav] Feature action: $action with params: $params');
 
-    // Special handling for logout
-    if (action == FeatureAction.logout) {
-      _updateState(_state.copyWith(isProcessing: false));
+    switch (action) {
+      // Speech speed controls
+      case FeatureAction.speechFaster:
+        final currentRate = _voiceService.speechRate;
+        final newRate = (currentRate + 0.15).clamp(0.0, 1.0);
+        _voiceService.setSpeechRate(newRate);
+        debugPrint('[VoiceNav] Speech rate increased to $newRate');
+        break;
+      case FeatureAction.speechSlower:
+        final currentRate = _voiceService.speechRate;
+        final newRate = (currentRate - 0.15).clamp(0.0, 1.0);
+        _voiceService.setSpeechRate(newRate);
+        debugPrint('[VoiceNav] Speech rate decreased to $newRate');
+        break;
+      case FeatureAction.speechNormal:
+        _voiceService.setSpeechRate(0.5);
+        debugPrint('[VoiceNav] Speech rate reset to normal (0.5)');
+        break;
+
+      // Theme controls
+      case FeatureAction.toggleTheme:
+        _onToggleTheme?.call();
+        break;
+      case FeatureAction.darkMode:
+        _onSetTheme?.call('dark');
+        break;
+      case FeatureAction.lightMode:
+        _onSetTheme?.call('light');
+        break;
+
+      // Navigation
+      case FeatureAction.goBack:
+        _voiceRouter.goBack();
+        break;
+
+      // General actions
+      case FeatureAction.cancel:
+        _updateState(_state.copyWith(isProcessing: false));
+        break;
+      case FeatureAction.stop:
+        _voiceService.stopSpeaking();
+        break;
+      case FeatureAction.logout:
+        _updateState(_state.copyWith(isProcessing: false));
+        break;
+
+      // Default - no special handling needed
+      default:
+        break;
     }
   }
 

@@ -93,7 +93,11 @@ class VoiceNavigationProvider extends ChangeNotifier {
 
   /// Handle microphone button tap
   Future<void> onMicrophoneTap() async {
+    debugPrint(
+      '[VoiceNavProvider] Microphone tap received, state: ${_controller.microphoneState}',
+    );
     await _controller.onMicrophoneTap();
+    notifyListeners(); // Make sure UI updates
   }
 
   /// Process a voice command
