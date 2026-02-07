@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/providers/vlm_provider.dart';
 import '../../../data/services/local_vlm_service.dart';
+import '../../../data/services/voice_service.dart';
 import '../../../routes/app_routes.dart';
 
 class ModelDownloadScreen extends StatefulWidget {
@@ -27,17 +28,63 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen> {
   @override
   void initState() {
     super.initState();
-    _checkModelStatus();
+    _checkModelStatusAndAutoSkip();
   }
 
-  Future<void> _checkModelStatus() async {
-    final vlm = context.read<VLMProvider>();
-    final downloaded = await vlm.areModelsDownloaded;
+  /// Check model status and auto-skip to main screen if models are ready
+  Future<void> _checkModelStatusAndAutoSkip() async {
+    try {
+      final vlm = context.read<VLMProvider>();
+      final downloaded = await vlm.areModelsDownloaded;
 
-    if (downloaded) {
-      setState(() {
-        _statusMessage = 'Model ready! Tap to initialize.';
-      });
+      if (downloaded) {
+        // Check if already initialized
+        if (vlm.isReady) {
+          // Auto-skip to main screen
+          await _announceAndNavigate();
+        } else {
+          // Initialize then navigate
+          if (mounted) {
+            setState(() {
+              _statusMessage = 'Model ready, initializing...';
+            });
+          }
+          await vlm.initialize();
+          await _announceAndNavigate();
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _statusMessage = 'Tap to start download';
+          });
+        }
+      }
+    } catch (e) {
+      // Handle exceptions gracefully
+      debugPrint('[ModelDownloadScreen] Error checking model status: $e');
+      if (mounted) {
+        setState(() {
+          _statusMessage = 'Error checking model status. Tap to download.';
+        });
+      }
+    }
+  }
+
+  /// Announce model ready and navigate to main screen
+  Future<void> _announceAndNavigate() async {
+    try {
+      final voiceService = VoiceService();
+      await voiceService.speak('Model ready, loading main screen');
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, AppRoutes.main);
+      }
+    } catch (e) {
+      // If audio feedback fails, still navigate
+      debugPrint('[ModelDownloadScreen] Error announcing navigation: $e');
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, AppRoutes.main);
+      }
     }
   }
 

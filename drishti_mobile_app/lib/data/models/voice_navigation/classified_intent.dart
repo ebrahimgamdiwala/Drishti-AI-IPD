@@ -31,8 +31,8 @@ class ClassifiedIntent {
   }) : timestamp = timestamp ?? DateTime.now();
 
   /// Whether the confidence score is high enough to act on
-  /// (threshold is 0.6 as per requirements)
-  bool get isConfident => confidence >= 0.6;
+  /// (threshold is 0.65 as per requirements)
+  bool get isConfident => confidence >= 0.65;
 
   /// Get the priority of this intent
   int get priority => type.priority;

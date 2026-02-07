@@ -4,10 +4,10 @@
 library;
 
 import 'package:flutter/material.dart';
+import '../../../generated/l10n/app_localizations.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_strings.dart';
 import '../../../data/providers/auth_provider.dart';
 import '../../../data/providers/voice_navigation_provider.dart';
 import '../../../data/models/voice_navigation/microphone_state.dart';
@@ -51,16 +51,16 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   /// Get status text based on microphone state
-  String _getStatusText(MicrophoneState state) {
+  String _getStatusText(MicrophoneState state, AppLocalizations l10n) {
     switch (state) {
       case MicrophoneState.idle:
-        return AppStrings.tapToSpeak;
+        return l10n.tapToSpeak;
       case MicrophoneState.listening:
-        return AppStrings.listening;
+        return l10n.listening;
       case MicrophoneState.processing:
-        return AppStrings.processing;
+        return l10n.processing;
       case MicrophoneState.speaking:
-        return 'Speaking...';
+        return l10n.speaking;
     }
   }
 
@@ -81,7 +81,10 @@ class _HomeScreenState extends State<HomeScreen>
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
-        child: Column(
+        child: Builder(
+          builder: (context) {
+            final l10n = AppLocalizations.of(context)!;
+            return Column(
           children: [
             // Header
             Padding(
@@ -119,11 +122,11 @@ class _HomeScreenState extends State<HomeScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Hi, ${AppStrings.welcomeBack}',
+                          l10n.welcomeBack,
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                         Text(
-                          user?.name ?? 'User',
+                          user?.name ?? l10n.user,
                           style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
@@ -153,9 +156,9 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                         ),
                         const SizedBox(width: 6),
-                        const Text(
-                          'Online',
-                          style: TextStyle(
+                        Text(
+                          l10n.online,
+                          style: const TextStyle(
                             color: AppColors.success,
                             fontWeight: FontWeight.w500,
                             fontSize: 12,
@@ -189,7 +192,7 @@ class _HomeScreenState extends State<HomeScreen>
 
             // Status text
             Text(
-              _getStatusText(micState),
+              _getStatusText(micState, l10n),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: micState == MicrophoneState.listening 
                     ? AppColors.primaryBlue 
@@ -201,12 +204,12 @@ class _HomeScreenState extends State<HomeScreen>
 
             // Quick scan button
             Semantics(
-              label: AppStrings.scanButton,
+              label: l10n.scanButton,
               button: true,
               child: TextButton.icon(
                 onPressed: () => _handleQuickScan(voiceNav),
                 icon: const Icon(Icons.camera_alt_outlined),
-                label: const Text(AppStrings.quickScan),
+                label: Text(l10n.quickScan),
                 style: TextButton.styleFrom(
                   foregroundColor: AppColors.primaryBlue,
                   padding: const EdgeInsets.symmetric(
@@ -227,7 +230,7 @@ class _HomeScreenState extends State<HomeScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Test Voice Commands',
+                      l10n.testVoiceCommands,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: AppColors.warning,
@@ -235,7 +238,7 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Speech recognition unavailable. Use test buttons:',
+                      l10n.speechRecognitionUnavailable,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AppColors.textSecondaryLight,
                       ),
@@ -246,31 +249,31 @@ class _HomeScreenState extends State<HomeScreen>
                       runSpacing: 8,
                       children: [
                         _TestCommandButton(
-                          label: 'Scan',
+                          label: l10n.scan,
                           command: 'scan surroundings',
                           icon: Icons.camera_alt,
                           onPressed: () => voiceNav.processVoiceCommand('scan surroundings'),
                         ),
                         _TestCommandButton(
-                          label: 'Dashboard',
+                          label: l10n.dashboard,
                           command: 'go to dashboard',
                           icon: Icons.dashboard,
                           onPressed: () => voiceNav.processVoiceCommand('go to dashboard'),
                         ),
                         _TestCommandButton(
-                          label: 'Settings',
+                          label: l10n.settings,
                           command: 'go to settings',
                           icon: Icons.settings,
                           onPressed: () => voiceNav.processVoiceCommand('go to settings'),
                         ),
                         _TestCommandButton(
-                          label: 'Relatives',
+                          label: l10n.relatives,
                           command: 'show relatives',
                           icon: Icons.people,
                           onPressed: () => voiceNav.processVoiceCommand('show relatives'),
                         ),
                         _TestCommandButton(
-                          label: 'Activity',
+                          label: l10n.activity,
                           command: 'show activity',
                           icon: Icons.history,
                           onPressed: () => voiceNav.processVoiceCommand('show activity'),
@@ -289,7 +292,7 @@ class _HomeScreenState extends State<HomeScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Quick Tips',
+                          l10n.quickTips,
                           style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(fontWeight: FontWeight.w600),
                         ),
@@ -300,15 +303,15 @@ class _HomeScreenState extends State<HomeScreen>
                             scrollDirection: Axis.horizontal,
                             children: [
                               _TipCard(
-                                text: 'Say: "Show obstacles"',
+                                text: l10n.sayShowObstacles,
                                 icon: Icons.remove_red_eye,
                               ),
                               _TipCard(
-                                text: 'Say: "Who is near?"',
+                                text: l10n.sayWhoIsNear,
                                 icon: Icons.people,
                               ),
                               _TipCard(
-                                text: 'Say: "Read text"',
+                                text: l10n.sayReadText,
                                 icon: Icons.text_fields,
                               ),
                             ],
@@ -323,6 +326,8 @@ class _HomeScreenState extends State<HomeScreen>
 
             const SizedBox(height: 20),
           ],
+        );
+          },
         ),
       ),
     );

@@ -132,13 +132,15 @@ class _SplashScreenState extends State<SplashScreen>
         final modelsDownloaded = await vlmProvider.areModelsDownloaded;
 
         if (modelsDownloaded) {
-          // Models exist - go to main
+          // Models exist - initialize if needed and go to main
+          if (!vlmProvider.isReady) {
+            await vlmProvider.initialize();
+          }
           destinationScreen = const MainShell();
           destinationRoute = AppRoutes.main;
         } else {
           // Models don't exist - go to download screen
-          destinationScreen =
-              const PermissionsScreen(); // Will redirect to download
+          destinationScreen = const MainShell(); // Show main underneath for reveal
           destinationRoute = AppRoutes.modelDownload;
         }
       }

@@ -5,6 +5,7 @@ library;
 
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../../../generated/l10n/app_localizations.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_colors.dart';
@@ -143,7 +144,10 @@ class _RelativesScreenState extends State<RelativesScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
-        child: Column(
+        child: Builder(
+          builder: (context) {
+            final l10n = AppLocalizations.of(context)!;
+            return Column(
           children: [
             // Header
             Padding(
@@ -152,7 +156,7 @@ class _RelativesScreenState extends State<RelativesScreen> {
                 children: [
                   Expanded(
                     child: Text(
-                      AppStrings.relatives,
+                      l10n.relatives,
                       style: Theme.of(context).textTheme.displaySmall?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: AppColors.primaryBlue,
@@ -233,6 +237,8 @@ class _RelativesScreenState extends State<RelativesScreen> {
                     ),
             ),
           ],
+        );
+          },
         ),
       ),
       floatingActionButton:

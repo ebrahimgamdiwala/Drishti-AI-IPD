@@ -8,8 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import '../../../generated/l10n/app_localizations.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_strings.dart';
 import '../../../data/providers/auth_provider.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../widgets/buttons/gradient_button.dart';
@@ -204,6 +204,7 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final user = context.watch<AuthProvider>().user;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -212,7 +213,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           ? AppColors.darkBackground
           : AppColors.lightBackground,
       appBar: AppBar(
-        title: const Text(AppStrings.profile),
+        title: Text(l10n.profile),
         backgroundColor: Colors.transparent,
         elevation: 0,
         bottom: TabBar(
@@ -220,23 +221,23 @@ class _ProfileScreenState extends State<ProfileScreen>
           indicatorColor: AppColors.primaryBlue,
           labelColor: AppColors.primaryBlue,
           unselectedLabelColor: AppColors.textSecondaryLight,
-          tabs: const [
-            Tab(text: 'Profile', icon: Icon(Icons.person_outline, size: 20)),
-            Tab(text: 'Account', icon: Icon(Icons.settings_outlined, size: 20)),
+          tabs: [
+            Tab(text: l10n.profile, icon: const Icon(Icons.person_outline, size: 20)),
+            Tab(text: l10n.accountSettings, icon: const Icon(Icons.settings_outlined, size: 20)),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildProfileTab(user, isDark),
-          _buildAccountTab(user, isDark),
+          _buildProfileTab(user, isDark, l10n),
+          _buildAccountTab(user, isDark, l10n),
         ],
       ),
     );
   }
 
-  Widget _buildProfileTab(dynamic user, bool isDark) {
+  Widget _buildProfileTab(dynamic user, bool isDark, AppLocalizations l10n) {
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -415,7 +416,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildAccountTab(dynamic user, bool isDark) {
+  Widget _buildAccountTab(dynamic user, bool isDark, AppLocalizations l10n) {
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(20),

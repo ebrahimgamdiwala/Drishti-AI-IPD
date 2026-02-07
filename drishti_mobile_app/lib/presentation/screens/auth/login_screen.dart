@@ -6,10 +6,12 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
+import '../../../generated/l10n/app_localizations.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../data/providers/auth_provider.dart';
 import '../../../data/services/voice_service.dart';
+import '../../../data/services/biometric_service.dart';
 import '../../../routes/app_routes.dart';
 import '../../widgets/glass_button.dart';
 import '../../widgets/glass_text_field.dart';
@@ -28,21 +30,50 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _voiceService = VoiceService();
+  final _biometricService = BiometricService();
 
   bool _obscurePassword = true;
   bool _isLoading = false;
+  bool _biometricAvailable = false;
+  bool _biometricEnabled = false;
+  String _biometricType = 'Biometric';
 
   @override
   void initState() {
     super.initState();
+    _initBiometric();
     _announceScreen();
+  }
+
+  Future<void> _initBiometric() async {
+    final available = await _biometricService.isBiometricAvailable();
+    final enabled = await _biometricService.isBiometricEnabled();
+    final typeName = await _biometricService.getBiometricTypeName();
+    
+    setState(() {
+      _biometricAvailable = available;
+      _biometricEnabled = enabled;
+      _biometricType = typeName;
+    });
+
+    // Auto-login with biometric if enabled
+    if (enabled && available) {
+      await _handleBiometricLogin();
+    }
   }
 
   Future<void> _announceScreen() async {
     await _voiceService.initTts();
-    await _voiceService.speak(
-      'Login screen. Enter your email and password to continue.',
-    );
+    
+    if (_biometricEnabled) {
+      await _voiceService.speak(
+        'Login screen. $_biometricType authentication is enabled. Tap the fingerprint button to login quickly.',
+      );
+    } else {
+      await _voiceService.speak(
+        'Login screen. Enter your email and password to continue.',
+      );
+    }
   }
 
   @override
@@ -58,6 +89,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     final authProvider = context.read<AuthProvider>();
+    final l10n = AppLocalizations.of(context)!;
     final success = await authProvider.login(
       _emailController.text.trim(),
       _passwordController.text,
@@ -66,8 +98,14 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     if (success && mounted) {
-      _voiceService.speak('Login successful. Welcome!');
-      Navigator.pushReplacementNamed(context, AppRoutes.main);
+      _voiceService.speak(l10n.loginSuccessful);
+      
+      // Offer to enable biometric if available and not already enabled
+      if (_biometricAvailable && !_biometricEnabled) {
+        _showEnableBiometricDialog();
+      } else {
+        Navigator.pushReplacementNamed(context, AppRoutes.main);
+      }
     } else if (mounted) {
       _voiceService.speak(
         'Login failed. ${authProvider.error ?? "Please try again."}',
@@ -78,6 +116,91 @@ class _LoginScreenState extends State<LoginScreen> {
           backgroundColor: AppColors.error,
         ),
       );
+    }
+  }
+
+  Future<void> _handleBiometricLogin() async {
+    setState(() => _isLoading = true);
+
+    await _voiceService.speak('Authenticating with $_biometricType');
+
+    final credentials = await _biometricService.authenticateAndGetCredentials();
+
+    if (credentials != null && mounted) {
+      final authProvider = context.read<AuthProvider>();
+      final success = await authProvider.login(
+        credentials['email']!,
+        credentials['password']!,
+      );
+
+      setState(() => _isLoading = false);
+
+      if (success && mounted) {
+        _voiceService.speak('$_biometricType authentication successful. Welcome!');
+        Navigator.pushReplacementNamed(context, AppRoutes.main);
+      } else if (mounted) {
+        _voiceService.speak('Login failed. Please try manual login.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(authProvider.error ?? 'Biometric login failed'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } else {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        _voiceService.speak('$_biometricType authentication cancelled');
+      }
+    }
+  }
+
+  void _showEnableBiometricDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Enable $_biometricType Login?'),
+        content: Text(
+          'Would you like to enable $_biometricType authentication for quick login?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pushReplacementNamed(context, AppRoutes.main);
+            },
+            child: const Text('Not Now'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _enableBiometric();
+            },
+            child: const Text('Enable'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _enableBiometric() async {
+    final success = await _biometricService.enableBiometric(
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+    );
+
+    if (success && mounted) {
+      _voiceService.speak('$_biometricType login enabled successfully');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$_biometricType login enabled'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+      Navigator.pushReplacementNamed(context, AppRoutes.main);
+    } else if (mounted) {
+      _voiceService.speak('Failed to enable $_biometricType login');
+      Navigator.pushReplacementNamed(context, AppRoutes.main);
     }
   }
 
@@ -104,6 +227,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    
     return GradientBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
@@ -134,7 +259,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             const SizedBox(height: 24),
                             Text(
-                              AppStrings.welcome,
+                              l10n.welcome,
                               style: Theme.of(context).textTheme.displaySmall
                                   ?.copyWith(
                                     color: AppColors.primaryBlue,
@@ -143,7 +268,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Sign in to continue',
+                              l10n.login,
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
                           ],
@@ -165,7 +290,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               label: 'Email or mobile number input field',
                               child: GlassTextField(
                                 controller: _emailController,
-                                labelText: AppStrings.emailOrPhone,
+                                labelText: l10n.emailOrPhone,
                                 hintText: 'example@example.com',
                                 keyboardType: TextInputType.emailAddress,
                                 prefixIcon: Icons.email_outlined,
@@ -188,7 +313,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               label: 'Password input field',
                               child: GlassTextField(
                                 controller: _passwordController,
-                                labelText: AppStrings.password,
+                                labelText: l10n.password,
                                 hintText: '••••••••',
                                 obscureText: _obscurePassword,
                                 prefixIcon: Icons.lock_outline,
@@ -225,7 +350,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   );
                                 },
                                 child: Text(
-                                  AppStrings.forgotPassword,
+                                  l10n.forgotPassword,
                                   style: TextStyle(
                                     color: AppColors.primaryBlue,
                                     fontWeight: FontWeight.w600,
@@ -242,7 +367,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               label: 'Login button',
                               button: true,
                               child: GlassButton(
-                                text: AppStrings.login,
+                                text: l10n.login,
                                 isLoading: _isLoading,
                                 onPressed: _handleLogin,
                                 width: double.infinity,
@@ -270,7 +395,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Text(
-                          AppStrings.orLoginWith,
+                          l10n.orLoginWith,
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(color: AppColors.textSecondaryLight),
                         ),
@@ -305,9 +430,21 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(width: 16),
                       _SocialGlassButton(
                         icon: Icons.fingerprint,
-                        onPressed: () {
-                          _voiceService.speak('Biometric login not available');
-                        },
+                        onPressed: _biometricAvailable
+                            ? _handleBiometricLogin
+                            : () {
+                                _voiceService.speak(
+                                  'Biometric authentication not available on this device',
+                                );
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Biometric authentication not available',
+                                    ),
+                                  ),
+                                );
+                              },
+                        isEnabled: _biometricAvailable,
                       ),
                     ],
                   ).animate().fadeIn(delay: 600.ms, duration: 400.ms),
@@ -319,7 +456,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        AppStrings.dontHaveAccount,
+                        l10n.dontHaveAccount,
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                       TextButton(
@@ -327,7 +464,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           Navigator.pushNamed(context, AppRoutes.signup);
                         },
                         child: Text(
-                          AppStrings.signUp,
+                          l10n.signup,
                           style: TextStyle(
                             color: AppColors.primaryBlue,
                             fontWeight: FontWeight.w600,
@@ -350,8 +487,13 @@ class _LoginScreenState extends State<LoginScreen> {
 class _SocialGlassButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onPressed;
+  final bool isEnabled;
 
-  const _SocialGlassButton({required this.icon, required this.onPressed});
+  const _SocialGlassButton({
+    required this.icon,
+    required this.onPressed,
+    this.isEnabled = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -360,7 +502,13 @@ class _SocialGlassButton extends StatelessWidget {
       height: 60,
       padding: EdgeInsets.zero,
       onTap: onPressed,
-      child: Icon(icon, size: 28, color: AppColors.primaryBlue),
+      child: Icon(
+        icon,
+        size: 28,
+        color: isEnabled
+            ? AppColors.primaryBlue
+            : AppColors.textSecondaryLight.withValues(alpha: 0.5),
+      ),
     );
   }
 }

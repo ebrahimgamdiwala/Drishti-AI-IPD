@@ -4,9 +4,9 @@
 library;
 
 import 'package:flutter/material.dart';
+import '../../../generated/l10n/app_localizations.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_strings.dart';
 import '../../widgets/cards/stats_card.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -39,7 +39,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
-          child: Column(
+          child: Builder(
+            builder: (context) {
+              final l10n = AppLocalizations.of(context)!;
+              return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header
@@ -47,7 +50,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    AppStrings.dashboard,
+                    l10n.dashboard,
                     style: Theme.of(context).textTheme.displaySmall?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: AppColors.primaryBlue,
@@ -66,7 +69,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 8),
 
               Text(
-                AppStrings.todayStats,
+                l10n.todayStats,
                 style: Theme.of(context).textTheme.bodyMedium,
               ).animate().fadeIn(delay: 100.ms, duration: 300.ms),
 
@@ -91,7 +94,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 childAspectRatio: 0.95,
                 children: [
                   StatsCard(
-                        title: AppStrings.batteryLevel,
+                        title: l10n.batteryLevel,
                         value: '${_stats['battery']}%',
                         icon: Icons.battery_charging_full,
                         iconColor: _stats['battery'] > 50
@@ -103,8 +106,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       .slideY(begin: 0.2, end: 0),
 
                   StatsCard(
-                        title: AppStrings.connectionStatus,
-                        value: _stats['connection'] ? 'Connected' : 'Offline',
+                        title: l10n.connectionStatus,
+                        value: _stats['connection'] ? l10n.connected : l10n.offline,
                         icon: _stats['connection']
                             ? Icons.wifi
                             : Icons.wifi_off,
@@ -117,7 +120,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       .slideY(begin: 0.2, end: 0),
 
                   StatsCard(
-                        title: AppStrings.alertsToday,
+                        title: l10n.alertsToday,
                         value: '${_stats['alerts']}',
                         icon: Icons.warning_amber,
                         iconColor: AppColors.warning,
@@ -127,7 +130,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       .slideY(begin: 0.2, end: 0),
 
                   StatsCard(
-                        title: AppStrings.interactions,
+                        title: l10n.interactions,
                         value: '${_stats['interactions']}',
                         icon: Icons.touch_app,
                         iconColor: AppColors.primaryBlue,
@@ -142,7 +145,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
               // Recent Activity Section
               Text(
-                'Recent Activity',
+                l10n.recentActivity,
                 style: Theme.of(
                   context,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
@@ -152,14 +155,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
               // Activity list
               _buildActivityItem(
-                'Obstacle detected',
+                l10n.obstacleDetected,
                 '2 min ago',
                 Icons.remove_red_eye,
                 AppColors.warning,
               ).animate().fadeIn(delay: 800.ms, duration: 300.ms),
 
               _buildActivityItem(
-                'Voice command processed',
+                l10n.voiceCommandProcessed,
                 '15 min ago',
                 Icons.mic,
                 AppColors.primaryBlue,
@@ -172,6 +175,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 AppColors.success,
               ).animate().fadeIn(delay: 1000.ms, duration: 300.ms),
             ],
+          );
+            },
           ),
         ),
       ),

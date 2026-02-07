@@ -6,7 +6,9 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../models/voice_navigation/voice_navigation_models.dart';
+import '../../providers/locale_provider.dart';
 import '../voice_service.dart';
 import '../local_vlm_service.dart';
 import '../api_service.dart';
@@ -16,6 +18,7 @@ import 'microphone_controller.dart';
 import 'voice_router.dart';
 import 'phone_vision_provider.dart';
 import 'voice_command_executor.dart';
+import '../../../presentation/screens/relatives/voice_add_relative_sheet.dart';
 
 /// Central controller for voice navigation system
 ///
@@ -36,6 +39,9 @@ class VoiceNavigationController extends ChangeNotifier {
   late final PhoneVisionProvider _visionProvider;
   late final VoiceCommandExecutor _commandExecutor;
 
+  // Navigator key for showing dialogs/sheets
+  final GlobalKey<NavigatorState>? _navigatorKey;
+
   // Current state
   VoiceNavigationState _state = VoiceNavigationState.initial();
 
@@ -51,7 +57,8 @@ class VoiceNavigationController extends ChangeNotifier {
     Function()? onToggleTheme,
     Function(String themeType)? onSetTheme,
     Function(String route)? onNavigate,
-  }) : _onToggleTheme = onToggleTheme,
+  }) : _navigatorKey = navigatorKey,
+       _onToggleTheme = onToggleTheme,
        _onSetTheme = onSetTheme {
     _voiceService = VoiceService();
     _micController = MicrophoneController(voiceService: _voiceService);
@@ -140,6 +147,11 @@ class VoiceNavigationController extends ChangeNotifier {
         debugPrint(
           '[VoiceNav] STT initialization failed - voice commands may not work',
         );
+        // Provide audio feedback about STT failure
+        await _audioFeedback.speak(
+          'Voice recognition unavailable, using text-to-speech only',
+          priority: AudioPriority.high,
+        );
       }
 
       // Don't announce "ready" - let the screen announce itself
@@ -198,6 +210,18 @@ class VoiceNavigationController extends ChangeNotifier {
   Future<void> processVoiceCommand(String command) async {
     if (command.trim().isEmpty) {
       debugPrint('[VoiceNav] Empty command received');
+      return;
+    }
+
+    // Check for stop listening command first
+    final normalized = command.toLowerCase().trim();
+    if (normalized.contains('stop listening') || 
+        (normalized.contains('stop') && normalized.contains('listening'))) {
+      debugPrint('[VoiceNav] Stop listening command received');
+      await _voiceService.stopHotwordListening();
+      await _audioFeedback.speak('Voice control stopped. Tap the microphone to start again.');
+      await _micController.setIdle();
+      _updateState(_state.copyWith(isProcessing: false));
       return;
     }
 
@@ -631,10 +655,18 @@ class VoiceNavigationController extends ChangeNotifier {
   }
 
   /// Handle feature action from voice command executor
-  void _onFeatureAction(FeatureAction action, Map<String, dynamic> params) {
+  Future<void> _onFeatureAction(FeatureAction action, Map<String, dynamic> params) async {
     debugPrint('[VoiceNav] Feature action: $action with params: $params');
 
     switch (action) {
+      // Relatives management
+      case FeatureAction.addRelative:
+        final voiceGuided = params['voiceGuided'] as bool? ?? false;
+        if (voiceGuided) {
+          _showVoiceGuidedAddRelative();
+        }
+        break;
+
       // Speech speed controls
       case FeatureAction.speechFaster:
         final currentRate = _voiceService.speechRate;
@@ -664,6 +696,14 @@ class VoiceNavigationController extends ChangeNotifier {
         _onSetTheme?.call('light');
         break;
 
+      // Language change
+      case FeatureAction.changeLanguage:
+        final languageCode = params['languageCode'] as String?;
+        if (languageCode != null) {
+          _changeLanguage(languageCode);
+        }
+        break;
+
       // Navigation
       case FeatureAction.goBack:
         _voiceRouter.goBack();
@@ -674,7 +714,13 @@ class VoiceNavigationController extends ChangeNotifier {
         _updateState(_state.copyWith(isProcessing: false));
         break;
       case FeatureAction.stop:
-        _voiceService.stopSpeaking();
+        final stopListening = params['stopListening'] as bool? ?? false;
+        if (stopListening) {
+          await _voiceService.stopHotwordListening();
+          await _audioFeedback.speak('Voice control stopped. Tap the microphone to start again.');
+        } else {
+          _voiceService.stopSpeaking();
+        }
         break;
       case FeatureAction.logout:
         _updateState(_state.copyWith(isProcessing: false));
@@ -683,6 +729,44 @@ class VoiceNavigationController extends ChangeNotifier {
       // Default - no special handling needed
       default:
         break;
+    }
+  }
+
+  /// Show voice-guided add relative sheet
+  void _showVoiceGuidedAddRelative() {
+    final context = _navigatorKey?.currentContext;
+    if (context == null) {
+      debugPrint('[VoiceNav] Cannot show voice-guided sheet: no context');
+      return;
+    }
+
+    // Import is added at the top of the file
+    showModalBottomSheet<dynamic>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const VoiceAddRelativeSheet(),
+    ).then((result) {
+      if (result != null) {
+        debugPrint('[VoiceNav] Relative added via voice: $result');
+      }
+    });
+  }
+
+  /// Change app language
+  void _changeLanguage(String languageCode) {
+    final context = _navigatorKey?.currentContext;
+    if (context == null) {
+      debugPrint('[VoiceNav] Cannot change language: no context');
+      return;
+    }
+
+    try {
+      final localeProvider = context.read<LocaleProvider>();
+      localeProvider.setLocale(Locale(languageCode, ''));
+      debugPrint('[VoiceNav] Language changed to: $languageCode');
+    } catch (e) {
+      debugPrint('[VoiceNav] Error changing language: $e');
     }
   }
 

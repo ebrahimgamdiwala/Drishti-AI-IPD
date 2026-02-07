@@ -1,0 +1,157 @@
+{
+  "@@locale": "en",
+  "appTitle": "Drishti",
+  "welcome": "Welcome",
+  "welcomeBack": "Welcome Back",
+  "login": "Login",
+  "signup": "Sign Up",
+  "email": "Email",
+  "emailOrPhone": "Email or Phone",
+  "password": "Password",
+  "forgotPassword": "Forgot Password?",
+  "dontHaveAccount": "Don't have an account?",
+  "alreadyHaveAccount": "Already have an account?",
+  "orLoginWith": "Or login with",
+  "addRelative": "Add Relative",
+  "editRelative": "Edit Relative",
+  "deleteRelative": "Delete Relative",
+  "relatives": "Relatives",
+  "settings": "Settings",
+  "profile": "Profile",
+  "dashboard": "Dashboard",
+  "activity": "Activity",
+  "help": "Help",
+  "about": "About",
+  "scanSurroundings": "Scan Surroundings",
+  "readText": "Read Text",
+  "detectObstacles": "Detect Obstacles",
+  "identifyPeople": "Identify People",
+  "darkMode": "Dark Mode",
+  "lightMode": "Light Mode",
+  "theme": "Theme",
+  "language": "Language",
+  "selectLanguage": "Select Language",
+  "logout": "Logout",
+  "cancel": "Cancel",
+  "save": "Save",
+  "delete": "Delete",
+  "edit": "Edit",
+  "name": "Name",
+  "relationship": "Relationship",
+  "notes": "Notes",
+  "takePhoto": "Take Photo",
+  "skip": "Skip",
+  "confirm": "Confirm",
+  "yes": "Yes",
+  "no": "No",
+  "ok": "OK",
+  "loginSuccessful": "Login successful. Welcome!",
+  "loginFailed": "Login failed. Please try again.",
+  "addRelativePrompt": "Let's add a new relative. I'll guide you through each step. Say 'stop listening' at any time to cancel.",
+  "speakName": "What is the person's name? Please speak clearly.",
+  "speakRelationship": "What is their relationship to you? For example, mother, father, friend, or sibling.",
+  "speakNotes": "Would you like to add any notes? Say the notes, or say 'skip' to continue.",
+  "takePhotoPrompt": "Now let's take a photo. Say 'take photo' to open the camera, or 'skip' to continue without a photo.",
+  "confirmSave": "Ready to save. Name: {name}, Relationship: {relationship}. Say 'save' to confirm, or 'cancel' to go back.",
+  "@confirmSave": {
+    "placeholders": {
+      "name": {"type": "String"},
+      "relationship": {"type": "String"}
+    }
+  },
+  "biometricLogin": "Biometric Login",
+  "enableBiometric": "Enable {biometricType} Login?",
+  "@enableBiometric": {
+    "placeholders": {
+      "biometricType": {"type": "String"}
+    }
+  },
+  "biometricPrompt": "Would you like to enable {biometricType} authentication for quick login?",
+  "@biometricPrompt": {
+    "placeholders": {
+      "biometricType": {"type": "String"}
+    }
+  },
+  "enableNow": "Enable",
+  "notNow": "Not Now",
+  "voiceCommands": "Voice Commands",
+  "voiceControl": "Voice Control",
+  "stopListening": "Stop Listening",
+  "speechSpeed": "Speech Speed",
+  "volume": "Volume",
+  "vibration": "Vibration",
+  "notifications": "Notifications",
+  "emergencyContacts": "Emergency Contacts",
+  "connectedUsers": "Connected Users",
+  "favorites": "Favorites",
+  "modelDownload": "AI Model Download",
+  "downloadModel": "Download Model",
+  "modelReady": "Model Ready",
+  "downloading": "Downloading...",
+  "initializing": "Initializing...",
+  "error": "Error",
+  "retry": "Retry",
+  "close": "Close",
+  "search": "Search",
+  "filter": "Filter",
+  "sort": "Sort",
+  "noDataAvailable": "No data available",
+  "loading": "Loading...",
+  "pleaseWait": "Please wait...",
+  "success": "Success",
+  "failed": "Failed",
+  "tryAgain": "Try Again",
+  "gotIt": "Got it",
+  "nameCaptured": "Got it. Name is {name}",
+  "@nameCaptured": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "relationshipCaptured": "Relationship set to {relationship}",
+  "@relationshipCaptured": {
+    "placeholders": {
+      "relationship": {"type": "String"}
+    }
+  },
+  "notesAdded": "Notes added",
+  "noNotesAdded": "No notes added",
+  "photoTaken": "Photo captured successfully",
+  "skippingPhoto": "Skipping photo",
+  "relativeSaved": "{name} has been added successfully as your {relationship}",
+  "@relativeSaved": {
+    "placeholders": {
+      "name": {"type": "String"},
+      "relationship": {"type": "String"}
+    }
+  },
+  "savingRelative": "Saving relative information",
+  "cancelled": "Cancelled",
+  "stopListeningMessage": "Stopping voice input. Closing form.",
+  "themeToggled": "Theme toggled",
+  "darkModeEnabled": "Dark mode enabled",
+  "lightModeEnabled": "Light mode enabled",
+  "speakingFaster": "Speaking faster now",
+  "speakingSlower": "Speaking slower now",
+  "speechSpeedNormal": "Speech speed reset to normal",
+  "volumeIncreased": "Volume increased",
+  "volumeDecreased": "Volume decreased",
+  "biometricAuthSuccess": "{biometricType} authentication successful. Welcome!",
+  "@biometricAuthSuccess": {
+    "placeholders": {
+      "biometricType": {"type": "String"}
+    }
+  },
+  "biometricAuthCancelled": "{biometricType} authentication cancelled",
+  "@biometricAuthCancelled": {
+    "placeholders": {
+      "biometricType": {"type": "String"}
+    }
+  },
+  "biometricNotAvailable": "Biometric authentication not available on this device",
+  "voiceControlStopped": "Voice control stopped. Tap the microphone to start again.",
+  "heyVision": "Hey Vision",
+  "listeningForHotword": "Listening for 'Hey Vision'...",
+  "processing": "Processing...",
+  "speaking": "Speaking..."
+}

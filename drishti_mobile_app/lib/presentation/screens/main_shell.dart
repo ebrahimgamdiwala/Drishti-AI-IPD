@@ -7,6 +7,7 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../generated/l10n/app_localizations.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/providers/voice_navigation_provider.dart';
 import 'home/home_screen.dart';
@@ -44,34 +45,37 @@ class _MainShellState extends State<MainShell> {
     SettingsScreen(),
   ];
 
-  final List<_NavItem> _navItems = const [
-    _NavItem(icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Home'),
-    _NavItem(
-      icon: Icons.dashboard_outlined,
-      activeIcon: Icons.dashboard,
-      label: 'Dashboard',
-    ),
-    _NavItem(
-      icon: Icons.psychology_outlined,
-      activeIcon: Icons.psychology,
-      label: 'AI Vision',
-    ),
-    _NavItem(
-      icon: Icons.people_outlined,
-      activeIcon: Icons.people,
-      label: 'Relatives',
-    ),
-    _NavItem(
-      icon: Icons.history_outlined,
-      activeIcon: Icons.history,
-      label: 'Activity',
-    ),
-    _NavItem(
-      icon: Icons.settings_outlined,
-      activeIcon: Icons.settings,
-      label: 'Settings',
-    ),
-  ];
+  List<_NavItem> _getNavItems(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return [
+      _NavItem(icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Home'),
+      _NavItem(
+        icon: Icons.dashboard_outlined,
+        activeIcon: Icons.dashboard,
+        label: l10n.dashboard,
+      ),
+      _NavItem(
+        icon: Icons.psychology_outlined,
+        activeIcon: Icons.psychology,
+        label: 'AI Vision',
+      ),
+      _NavItem(
+        icon: Icons.people_outlined,
+        activeIcon: Icons.people,
+        label: l10n.relatives,
+      ),
+      _NavItem(
+        icon: Icons.history_outlined,
+        activeIcon: Icons.history,
+        label: l10n.activity,
+      ),
+      _NavItem(
+        icon: Icons.settings_outlined,
+        activeIcon: Icons.settings,
+        label: l10n.settings,
+      ),
+    ];
+  }
 
   @override
   void initState() {
@@ -117,11 +121,15 @@ class _MainShellState extends State<MainShell> {
 
     debugPrint('[MainShell] 🎤 Hotword detected! Starting voice command...');
 
+    // Provide brief audio feedback for hotword detection
+    // Use speakImmediate to ensure it plays quickly without queuing
+    await voiceNav.audioFeedback.speakImmediate('Listening');
+
     // Cancel any pending restart - VoiceService handles restarts now
     _restartTimer?.cancel();
 
-    // Wait for STT to fully stop
-    await Future.delayed(const Duration(milliseconds: 300));
+    // Wait for STT to fully stop and for audio feedback to complete
+    await Future.delayed(const Duration(milliseconds: 500));
 
     // Start voice command - VoiceService will resume continuous listening after
     await voiceNav.onMicrophoneTap();
@@ -369,8 +377,8 @@ class _MainShellState extends State<MainShell> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: List.generate(
-                          _navItems.length,
-                          (index) => _buildNavItem(index, isDark),
+                          _getNavItems(context).length,
+                          (index) => _buildNavItem(index, isDark, context),
                         ),
                       ),
                     ),
@@ -384,9 +392,9 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  Widget _buildNavItem(int index, bool isDark) {
+  Widget _buildNavItem(int index, bool isDark, BuildContext context) {
     final isSelected = _currentIndex == index;
-    final item = _navItems[index];
+    final item = _getNavItems(context)[index];
 
     return Semantics(
       label: item.label,

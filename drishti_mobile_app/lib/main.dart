@@ -7,12 +7,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'generated/l10n/app_localizations.dart';
 
 import 'core/themes/theme_provider.dart';
 import 'data/providers/auth_provider.dart';
 import 'data/providers/user_provider.dart';
 import 'data/providers/vlm_provider.dart';
 import 'data/providers/voice_navigation_provider.dart';
+import 'data/providers/locale_provider.dart';
 import 'data/services/storage_service.dart';
 import 'data/services/voice_service.dart';
 import 'routes/app_routes.dart';
@@ -61,6 +64,9 @@ class DrishtiApp extends StatelessWidget {
         // Theme provider
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
 
+        // Locale provider
+        ChangeNotifierProvider(create: (_) => LocaleProvider()),
+
         // Auth provider
         ChangeNotifierProvider(create: (_) => AuthProvider()),
 
@@ -82,33 +88,57 @@ class DrishtiApp extends StatelessWidget {
                     context.read<ThemeProvider>().toggleTheme();
                   },
                   onSetTheme: (themeType) {
-                    if (themeType == 'dark') {
-                      context.read<ThemeProvider>().setTheme(ThemeType.dark);
-                    } else if (themeType == 'light') {
-                      context.read<ThemeProvider>().setTheme(ThemeType.light);
+                    switch (themeType) {
+                      case 'dark':
+                        context.read<ThemeProvider>().setTheme(ThemeType.dark);
+                        break;
+                      case 'light':
+                        context.read<ThemeProvider>().setTheme(ThemeType.light);
+                        break;
+                      case 'system':
+                        context.read<ThemeProvider>().setTheme(ThemeType.system);
+                        break;
+                      default:
+                        debugPrint('[DrishtiApp] Unknown theme type: $themeType');
                     }
                   },
                 ),
               ),
             ],
-            child: Consumer<ThemeProvider>(
-              builder: (context, themeProvider, child) {
+            child: Consumer2<ThemeProvider, LocaleProvider>(
+              builder: (context, themeProvider, localeProvider, child) {
                 return MaterialApp(
                   title: 'Drishti',
                   debugShowCheckedModeBanner: false,
                   navigatorKey: navigatorKey,
-
-                  // Theme - Glassmorphism
+                  
+                  // Localization
+                  localizationsDelegates: const [
+                    AppLocalizations.delegate,
+                    GlobalMaterialLocalizations.delegate,
+                    GlobalWidgetsLocalizations.delegate,
+                    GlobalCupertinoLocalizations.delegate,
+                  ],
+                  supportedLocales: const [
+                    Locale('en', ''), // English
+                    Locale('hi', ''), // Hindi
+                    Locale('ta', ''), // Tamil
+                    Locale('te', ''), // Telugu
+                    Locale('bn', ''), // Bengali
+                  ],
+                  locale: localeProvider.locale,
+                  
+                  // Theme
                   theme: themeProvider.themeData,
                   darkTheme: themeProvider.themeData,
                   themeMode: ThemeMode.system,
-
+                  
                   // Routes
                   initialRoute: AppRoutes.splash,
                   onGenerateRoute: AppRoutes.generateRoute,
 
                   // Accessibility
-                  builder: (context, child) {
+                  builder: (context, widget) {
                     return MediaQuery(
                       // Respect system text scale factor for accessibility
                       data: MediaQuery.of(context).copyWith(
@@ -118,7 +148,7 @@ class DrishtiApp extends StatelessWidget {
                           ).textScaler.scale(1.0).clamp(1.0, 1.3),
                         ),
                       ),
-                      child: child!,
+                      child: widget!,
                     );
                   },
                 );

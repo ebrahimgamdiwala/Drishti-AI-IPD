@@ -6,6 +6,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
+import '../../../generated/l10n/app_localizations.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../data/providers/auth_provider.dart';
@@ -110,7 +111,10 @@ class _SignupScreenState extends State<SignupScreen> {
           padding: const EdgeInsets.all(24),
           child: Form(
             key: _formKey,
-            child: Column(
+            child: Builder(
+              builder: (context) {
+                final l10n = AppLocalizations.of(context)!;
+                return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Back button and title
@@ -123,7 +127,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     Expanded(
                       child: Text(
-                        AppStrings.signUp,
+                        l10n.signup,
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                               color: AppColors.primaryBlue,
@@ -182,7 +186,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 // Email field
                 CustomTextField(
                   controller: _emailController,
-                  label: AppStrings.email,
+                  label: l10n.email,
                   hint: 'example@example.com',
                   keyboardType: TextInputType.emailAddress,
                   prefixIcon: Icons.email_outlined,
@@ -204,7 +208,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 // Password field
                 CustomTextField(
                   controller: _passwordController,
-                  label: AppStrings.password,
+                  label: l10n.password,
                   hint: '••••••••',
                   obscureText: _obscurePassword,
                   prefixIcon: Icons.lock_outline,
@@ -264,7 +268,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
                 // Signup button
                 GradientButton(
-                  text: AppStrings.signUp,
+                  text: l10n.signup,
                   isLoading: _isLoading,
                   onPressed: _handleSignup,
                 )
@@ -325,7 +329,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     TextButton(
                       onPressed: () => Navigator.pop(context),
                       child: Text(
-                        AppStrings.login,
+                        l10n.login,
                         style: TextStyle(
                           color: AppColors.primaryBlue,
                           fontWeight: FontWeight.w600,
@@ -337,6 +341,8 @@ class _SignupScreenState extends State<SignupScreen> {
                     .animate()
                     .fadeIn(delay: 1000.ms, duration: 300.ms),
               ],
+            );
+              },
             ),
           ),
         ),

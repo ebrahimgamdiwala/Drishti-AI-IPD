@@ -6,10 +6,11 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
+import '../../../generated/l10n/app_localizations.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_strings.dart';
 import '../../../core/themes/theme_provider.dart';
 import '../../../data/providers/auth_provider.dart';
+import '../../../data/providers/locale_provider.dart';
 import '../../../data/services/voice_service.dart';
 import '../../../routes/app_routes.dart';
 import '../profile/profile_screen.dart';
@@ -44,6 +45,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final themeProvider = context.watch<ThemeProvider>();
     final user = context.watch<AuthProvider>().user;
 
@@ -57,7 +59,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               // Header
               Text(
-                AppStrings.settings,
+                l10n.settings,
                 style: Theme.of(context).textTheme.displaySmall?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: AppColors.primaryBlue,
@@ -67,7 +69,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 24),
 
               // Profile section
-              _buildProfileCard(user?.name ?? 'User', user?.email ?? '')
+              _buildProfileCard(user?.name ?? l10n.user, user?.email ?? '', l10n)
                   .animate()
                   .fadeIn(delay: 100.ms, duration: 300.ms)
                   .slideY(begin: 0.1, end: 0),
@@ -75,13 +77,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 24),
 
               // Connections Section
-              _buildSectionHeader('Connections'),
+              _buildSectionHeader(l10n.connections),
               const SizedBox(height: 12),
 
               _buildSettingsCard([
                 _SettingTile(
                   icon: Icons.favorite_border,
-                  title: 'Favorites',
+                  title: l10n.favorites,
                   onTap: () {
                     Navigator.push(
                       context,
@@ -94,7 +96,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(),
                 _SettingTile(
                   icon: Icons.emergency_outlined,
-                  title: 'Emergency Contacts',
+                  title: l10n.emergencyContacts,
                   onTap: () {
                     Navigator.push(
                       context,
@@ -107,7 +109,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(),
                 _SettingTile(
                   icon: Icons.people_outline,
-                  title: 'Connected Users',
+                  title: l10n.connectedUsers,
                   onTap: () {
                     Navigator.push(
                       context,
@@ -122,25 +124,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 24),
 
               // Appearance Section
-              _buildSectionHeader(AppStrings.appearance),
+              _buildSectionHeader(l10n.appearance),
               const SizedBox(height: 12),
 
               _buildSettingsCard([
                 _ThemeSelector(
                   currentTheme: themeProvider.themeType,
                   onChanged: (type) => themeProvider.setTheme(type),
+                  l10n: l10n,
                 ),
               ]).animate().fadeIn(delay: 200.ms, duration: 300.ms),
 
               const SizedBox(height: 24),
 
+              // Language Section
+              _buildSectionHeader(l10n.language),
+              const SizedBox(height: 12),
+
+              _buildSettingsCard([
+                _LanguageSelector(),
+              ]).animate().fadeIn(delay: 250.ms, duration: 300.ms),
+
+              const SizedBox(height: 24),
+
               // Voice Settings
-              _buildSectionHeader(AppStrings.voiceSettings),
+              _buildSectionHeader(l10n.voiceControl),
               const SizedBox(height: 12),
 
               _buildSettingsCard([
                 _SettingSlider(
-                  title: AppStrings.voiceSpeed,
+                  title: l10n.speechSpeed,
                   subtitle: _getSpeedLabel(_voiceSpeed),
                   value: _voiceSpeed,
                   onChanged: (value) async {
@@ -153,13 +166,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 24),
 
               // Accessibility
-              _buildSectionHeader(AppStrings.accessibility),
+              _buildSectionHeader(l10n.accessibility),
               const SizedBox(height: 12),
 
               _buildSettingsCard([
                 _SettingToggle(
-                  title: AppStrings.highContrast,
-                  subtitle: 'Enhanced visibility for text and icons',
+                  title: l10n.highContrast,
+                  subtitle: l10n.enhancedVisibility,
                   value: _highContrast,
                   onChanged: (value) {
                     setState(() => _highContrast = value);
@@ -167,8 +180,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const Divider(),
                 _SettingToggle(
-                  title: AppStrings.largeText,
-                  subtitle: 'Increase text size throughout the app',
+                  title: l10n.largeText,
+                  subtitle: l10n.increaseTextSize,
                   value: false,
                   onChanged: (value) {},
                 ),
@@ -177,13 +190,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 24),
 
               // Notifications
-              _buildSectionHeader(AppStrings.notifications),
+              _buildSectionHeader(l10n.notifications),
               const SizedBox(height: 12),
 
               _buildSettingsCard([
                 _SettingToggle(
-                  title: 'Alert Notifications',
-                  subtitle: 'Receive notifications for safety alerts',
+                  title: l10n.alertNotifications,
+                  subtitle: l10n.receiveNotifications,
                   value: _notifications,
                   onChanged: (value) {
                     setState(() => _notifications = value);
@@ -197,7 +210,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildSettingsCard([
                 _SettingTile(
                   icon: Icons.info_outline,
-                  title: 'About',
+                  title: l10n.about,
                   onTap: () {
                     Navigator.push(
                       context,
@@ -208,7 +221,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(),
                 _SettingTile(
                   icon: Icons.help_outline,
-                  title: AppStrings.help,
+                  title: l10n.help,
                   onTap: () {
                     Navigator.push(
                       context,
@@ -219,7 +232,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(),
                 _SettingTile(
                   icon: Icons.privacy_tip_outlined,
-                  title: AppStrings.privacyPolicy,
+                  title: l10n.privacyPolicy,
                   onTap: () {
                     Navigator.push(
                       context,
@@ -237,7 +250,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildSettingsCard([
                 _SettingTile(
                   icon: Icons.logout,
-                  title: AppStrings.logout,
+                  title: l10n.logout,
                   isDestructive: true,
                   onTap: () => _handleLogout(context),
                 ),
@@ -251,7 +264,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildProfileCard(String name, String email) {
+  Widget _buildProfileCard(String name, String email, AppLocalizations l10n) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
@@ -349,31 +362,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   String _getSpeedLabel(double speed) {
-    if (speed < 0.3) return 'Slow';
-    if (speed < 0.6) return 'Normal';
-    if (speed < 0.8) return 'Fast';
-    return 'Very Fast';
+    final l10n = AppLocalizations.of(context)!;
+    if (speed < 0.3) return l10n.slow;
+    if (speed < 0.6) return l10n.normal;
+    if (speed < 0.8) return l10n.fast;
+    return l10n.veryFast;
   }
 
   Future<void> _handleLogout(BuildContext context) async {
     // Capture references before async gap
     final authProvider = context.read<AuthProvider>();
     final navigator = Navigator.of(context);
+    final l10n = AppLocalizations.of(context)!;
 
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
+        title: Text(l10n.logout),
+        content: Text(l10n.confirmLogout),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Logout'),
+            child: Text(l10n.logout),
           ),
         ],
       ),
@@ -391,8 +406,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 class _ThemeSelector extends StatelessWidget {
   final ThemeType currentTheme;
   final ValueChanged<ThemeType> onChanged;
+  final AppLocalizations l10n;
 
-  const _ThemeSelector({required this.currentTheme, required this.onChanged});
+  const _ThemeSelector({
+    required this.currentTheme,
+    required this.onChanged,
+    required this.l10n,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -402,7 +422,7 @@ class _ThemeSelector extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Theme',
+            l10n.theme,
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500),
@@ -412,21 +432,21 @@ class _ThemeSelector extends StatelessWidget {
             children: [
               _ThemeOption(
                 icon: Icons.light_mode,
-                label: 'Light',
+                label: l10n.lightMode,
                 isSelected: currentTheme == ThemeType.light,
                 onTap: () => onChanged(ThemeType.light),
               ),
               const SizedBox(width: 12),
               _ThemeOption(
                 icon: Icons.dark_mode,
-                label: 'Dark',
+                label: l10n.darkMode,
                 isSelected: currentTheme == ThemeType.dark,
                 onTap: () => onChanged(ThemeType.dark),
               ),
               const SizedBox(width: 12),
               _ThemeOption(
                 icon: Icons.settings_suggest,
-                label: 'System',
+                label: l10n.system,
                 isSelected: currentTheme == ThemeType.system,
                 onTap: () => onChanged(ThemeType.system),
               ),
@@ -621,6 +641,112 @@ class _SettingTile extends StatelessWidget {
       ),
       trailing: const Icon(Icons.chevron_right),
       onTap: onTap,
+    );
+  }
+}
+
+
+// Language Selector Widget
+class _LanguageSelector extends StatelessWidget {
+  const _LanguageSelector();
+
+  @override
+  Widget build(BuildContext context) {
+    final localeProvider = context.watch<LocaleProvider>();
+    final currentLanguage = localeProvider.locale.languageCode;
+    final l10n = AppLocalizations.of(context)!;
+
+    return ListTile(
+      leading: const Icon(Icons.language),
+      title: Text(
+        l10n.language,
+        style: const TextStyle(fontWeight: FontWeight.w500),
+      ),
+      subtitle: Text(localeProvider.getLanguageName(currentLanguage)),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => _showLanguageDialog(context, localeProvider),
+    );
+  }
+
+  void _showLanguageDialog(BuildContext context, LocaleProvider provider) {
+    final currentLanguage = provider.locale.languageCode;
+    final l10n = AppLocalizations.of(context)!;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.selectLanguage),
+        contentPadding: const EdgeInsets.symmetric(vertical: 20),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildLanguageOption(
+              context,
+              'en',
+              'English',
+              currentLanguage,
+              provider,
+            ),
+            _buildLanguageOption(
+              context,
+              'hi',
+              'हिंदी',
+              currentLanguage,
+              provider,
+            ),
+            _buildLanguageOption(
+              context,
+              'ta',
+              'தமிழ்',
+              currentLanguage,
+              provider,
+            ),
+            _buildLanguageOption(
+              context,
+              'te',
+              'తెలుగు',
+              currentLanguage,
+              provider,
+            ),
+            _buildLanguageOption(
+              context,
+              'bn',
+              'বাংলা',
+              currentLanguage,
+              provider,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLanguageOption(
+    BuildContext context,
+    String code,
+    String name,
+    String currentLanguage,
+    LocaleProvider provider,
+  ) {
+    final isSelected = currentLanguage == code;
+
+    return RadioListTile<String>(
+      title: Text(
+        name,
+        style: TextStyle(
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+        ),
+      ),
+      value: code,
+      groupValue: currentLanguage,
+      activeColor: AppColors.primaryBlue,
+      onChanged: (value) {
+        if (value != null) {
+          provider.setLocale(Locale(value, ''));
+          Navigator.pop(context);
+        }
+      },
+      selected: isSelected,
     );
   }
 }

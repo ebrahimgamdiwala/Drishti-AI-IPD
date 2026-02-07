@@ -112,6 +112,8 @@ class IntentClassifier {
         'remove relative',
         'edit relative',
         'update relative',
+        'show all relatives',
+        'list relatives',
       ],
       IntentType.auth: [
         'sign in',
@@ -135,6 +137,8 @@ class IntentClassifier {
         'haptic',
         'emergency contact',
         'change theme',
+        'toggle theme',
+        'switch theme',
         'dark mode',
         'light mode',
         'enable',
@@ -228,7 +232,14 @@ class IntentClassifier {
     // Emergency intents get a significant boost for urgency keywords
     if (type == IntentType.emergency) {
       if (command.contains('help') || command.contains('emergency') || command.contains('sos')) {
-        confidence += 0.15;
+        // Don't boost if it's "emergency contact" without "call" (that's a settings command)
+        if (!command.contains('emergency contact') || command.contains('call')) {
+          confidence += 0.15;
+        }
+      }
+      // Boost for "call" in emergency context
+      if (command.contains('call') && (command.contains('emergency') || command.contains('help'))) {
+        confidence += 0.20;
       }
     }
     
@@ -289,6 +300,11 @@ class IntentClassifier {
           confidence += 0.25;
           break;
         }
+      }
+      // Special boost for "emergency contact" which should be settings, not emergency
+      // But only if it's not "call emergency contact" (that's an actual emergency)
+      if (command.contains('emergency contact') && !command.contains('call')) {
+        confidence += 0.30;
       }
     }
     
@@ -481,10 +497,10 @@ class IntentClassifier {
     // Vibration settings
     if (command.contains('vibration') || command.contains('haptic')) {
       parameters['setting'] = 'vibration';
-      if (command.contains('enable') || command.contains('on') || command.contains('turn on')) {
-        parameters['action'] = 'enable';
-      } else if (command.contains('disable') || command.contains('off') || command.contains('turn off')) {
+      if (command.contains('disable') || command.contains('turn off')) {
         parameters['action'] = 'disable';
+      } else if (command.contains('enable') || command.contains('on') || command.contains('turn on')) {
+        parameters['action'] = 'enable';
       } else {
         parameters['action'] = 'toggle';
       }
@@ -538,7 +554,8 @@ class IntentClassifier {
     if (command.contains('battery')) {
       parameters['infoType'] = 'battery';
     } else if (command.contains('connection') || command.contains('connected') || 
-               command.contains('online') || command.contains('offline')) {
+               command.contains('online') || command.contains('offline') ||
+               command.contains('network')) {
       parameters['infoType'] = 'connection';
     } else {
       parameters['infoType'] = 'status';

@@ -97,6 +97,7 @@ class VoiceCommandConfig {
     'scan area': FeatureAction.scan,
     'what is in front': FeatureAction.scan,
     'what is around me': FeatureAction.scan,
+    'what\'s in front of me': FeatureAction.scan,
     'what do you see': FeatureAction.analyzeScene,
     'describe the scene': FeatureAction.analyzeScene,
     'describe surroundings': FeatureAction.analyzeScene,
@@ -121,6 +122,7 @@ class VoiceCommandConfig {
     'new relative': FeatureAction.addRelative,
     'add new relative': FeatureAction.addRelative,
     'create relative': FeatureAction.addRelative,
+    'create new relative': FeatureAction.addRelative,
     'list relatives': FeatureAction.listRelatives,
     'show relatives': FeatureAction.listRelatives,
     'my relatives': FeatureAction.listRelatives,
@@ -169,10 +171,28 @@ class VoiceCommandConfig {
     'enable light mode': FeatureAction.lightMode,
     'turn on light mode': FeatureAction.lightMode,
 
+    // Language commands
+    'change language': FeatureAction.changeLanguage,
+    'switch language': FeatureAction.changeLanguage,
+    'change language to english': FeatureAction.changeLanguage,
+    'change language to hindi': FeatureAction.changeLanguage,
+    'change language to tamil': FeatureAction.changeLanguage,
+    'change language to telugu': FeatureAction.changeLanguage,
+    'change language to bengali': FeatureAction.changeLanguage,
+    'switch to english': FeatureAction.changeLanguage,
+    'switch to hindi': FeatureAction.changeLanguage,
+    'switch to tamil': FeatureAction.changeLanguage,
+    'switch to telugu': FeatureAction.changeLanguage,
+    'switch to bengali': FeatureAction.changeLanguage,
+    'english language': FeatureAction.changeLanguage,
+    'hindi language': FeatureAction.changeLanguage,
+    'tamil language': FeatureAction.changeLanguage,
+    'telugu language': FeatureAction.changeLanguage,
+    'bengali language': FeatureAction.changeLanguage,
+
     // Other settings commands
     'toggle vibration': FeatureAction.toggleVibration,
     'toggle notifications': FeatureAction.toggleNotifications,
-    'change language': FeatureAction.changeLanguage,
 
     // Activity commands
     'show activity': FeatureAction.viewActivity,
@@ -219,6 +239,7 @@ class VoiceCommandConfig {
     'sos': FeatureAction.callEmergencyContact,
     'show emergency contacts': FeatureAction.viewEmergencyContacts,
     'emergency contacts': FeatureAction.viewEmergencyContacts,
+    'emergency contact': FeatureAction.viewEmergencyContacts,
     'view emergency contacts': FeatureAction.viewEmergencyContacts,
     'open emergency contacts': FeatureAction.viewEmergencyContacts,
     'go to emergency contacts': FeatureAction.goEmergency,
@@ -281,8 +302,11 @@ class VoiceCommandConfig {
     'cancel': FeatureAction.cancel,
     'never mind': FeatureAction.cancel,
     'stop': FeatureAction.stop,
+    'stop listening': FeatureAction.stop,
     'stop speaking': FeatureAction.stop,
     'be quiet': FeatureAction.stop,
+    'quiet': FeatureAction.stop,
+    'silence': FeatureAction.stop,
     'repeat': FeatureAction.repeat,
     'say again': FeatureAction.repeat,
     'what did you say': FeatureAction.repeat,
@@ -305,12 +329,12 @@ class VoiceCommandExecutor {
   final AudioFeedbackEngine _audioFeedback;
 
   // Callbacks for various features
-  final Function(FeatureAction, Map<String, dynamic>)? _onFeatureAction;
+  final Future<void> Function(FeatureAction, Map<String, dynamic>)? _onFeatureAction;
   final Function(String route)? _onNavigate;
 
   VoiceCommandExecutor({
     required AudioFeedbackEngine audioFeedback,
-    Function(FeatureAction, Map<String, dynamic>)? onFeatureAction,
+    Future<void> Function(FeatureAction, Map<String, dynamic>)? onFeatureAction,
     Function(String)? onNavigate,
   }) : _audioFeedback = audioFeedback,
        _onFeatureAction = onFeatureAction,
@@ -318,6 +342,7 @@ class VoiceCommandExecutor {
 
   /// Execute a voice command
   Future<void> executeCommand(String command) async {
+    _lastCommand = command; // Store for language detection
     final action = VoiceCommandConfig.getActionFromCommand(command);
 
     debugPrint(
@@ -475,7 +500,7 @@ class VoiceCommandExecutor {
 
     // Notify feature action callback if not a navigation
     if (!_isNavigationAction(action)) {
-      _onFeatureAction?.call(action, {});
+      await _onFeatureAction?.call(action, {});
     }
   }
 
@@ -518,8 +543,9 @@ class VoiceCommandExecutor {
 
   // Relatives implementations
   Future<void> _executeAddRelative() async {
-    _onNavigate?.call('/relatives');
-    await _audioFeedback.speak('Opening relatives to add a new family member');
+    // Trigger the voice-guided add relative flow
+    await _onFeatureAction?.call(FeatureAction.addRelative, {'voiceGuided': true});
+    await _audioFeedback.speak('Opening voice-guided form to add a new relative');
   }
 
   Future<void> _executeListRelatives() async {
@@ -564,9 +590,44 @@ class VoiceCommandExecutor {
   }
 
   Future<void> _executeChangeLanguage() async {
-    _onNavigate?.call('/settings');
-    await _audioFeedback.speak('Opening language settings');
+    // Extract language from the last command
+    final command = _lastCommand?.toLowerCase() ?? '';
+    String? languageCode;
+    String? languageName;
+
+    if (command.contains('english')) {
+      languageCode = 'en';
+      languageName = 'English';
+    } else if (command.contains('hindi')) {
+      languageCode = 'hi';
+      languageName = 'Hindi';
+    } else if (command.contains('tamil')) {
+      languageCode = 'ta';
+      languageName = 'Tamil';
+    } else if (command.contains('telugu')) {
+      languageCode = 'te';
+      languageName = 'Telugu';
+    } else if (command.contains('bengali')) {
+      languageCode = 'bn';
+      languageName = 'Bengali';
+    }
+
+    if (languageCode != null) {
+      // Change language directly
+      await _onFeatureAction?.call(
+        FeatureAction.changeLanguage,
+        {'languageCode': languageCode, 'languageName': languageName},
+      );
+      await _audioFeedback.speak('Changing language to $languageName');
+    } else {
+      // No specific language mentioned, open settings
+      _onNavigate?.call('/settings');
+      await _audioFeedback.speak('Opening language settings');
+    }
   }
+
+  String? _lastCommand;
+
 
   // Activity implementations
   Future<void> _executeViewActivity() async {
@@ -649,38 +710,38 @@ class VoiceCommandExecutor {
 
   Future<void> _executeLogout() async {
     await _audioFeedback.speak('Logging out');
-    _onFeatureAction?.call(FeatureAction.logout, {});
+    await _onFeatureAction?.call(FeatureAction.logout, {});
   }
 
   // Speech speed implementations
   Future<void> _executeSpeechFaster() async {
-    _onFeatureAction?.call(FeatureAction.speechFaster, {'direction': 'faster'});
+    await _onFeatureAction?.call(FeatureAction.speechFaster, {'direction': 'faster'});
     await _audioFeedback.speak('Speaking faster now');
   }
 
   Future<void> _executeSpeechSlower() async {
-    _onFeatureAction?.call(FeatureAction.speechSlower, {'direction': 'slower'});
+    await _onFeatureAction?.call(FeatureAction.speechSlower, {'direction': 'slower'});
     await _audioFeedback.speak('Speaking slower now');
   }
 
   Future<void> _executeSpeechNormal() async {
-    _onFeatureAction?.call(FeatureAction.speechNormal, {'direction': 'normal'});
+    await _onFeatureAction?.call(FeatureAction.speechNormal, {'direction': 'normal'});
     await _audioFeedback.speak('Speech speed reset to normal');
   }
 
   // Theme implementations
   Future<void> _executeToggleTheme() async {
-    _onFeatureAction?.call(FeatureAction.toggleTheme, {});
+    // Don't call _onFeatureAction here - it will be called at the end of executeCommand()
     await _audioFeedback.speak('Theme toggled');
   }
 
   Future<void> _executeDarkMode() async {
-    _onFeatureAction?.call(FeatureAction.darkMode, {'theme': 'dark'});
+    // Don't call _onFeatureAction here - it will be called at the end of executeCommand()
     await _audioFeedback.speak('Dark mode enabled');
   }
 
   Future<void> _executeLightMode() async {
-    _onFeatureAction?.call(FeatureAction.lightMode, {'theme': 'light'});
+    // Don't call _onFeatureAction here - it will be called at the end of executeCommand()
     await _audioFeedback.speak('Light mode enabled');
   }
 
@@ -693,7 +754,7 @@ class VoiceCommandExecutor {
   Future<void> _executeAddEmergencyContact() async {
     _onNavigate?.call('/emergency');
     await _audioFeedback.speak('Opening form to add emergency contact');
-    _onFeatureAction?.call(FeatureAction.addEmergencyContact, {});
+    await _onFeatureAction?.call(FeatureAction.addEmergencyContact, {});
   }
 
   // Connected users implementations
@@ -705,23 +766,23 @@ class VoiceCommandExecutor {
   Future<void> _executeAddConnectedUser() async {
     _onNavigate?.call('/connected-users');
     await _audioFeedback.speak('Opening form to add connected user');
-    _onFeatureAction?.call(FeatureAction.addConnectedUser, {});
+    await _onFeatureAction?.call(FeatureAction.addConnectedUser, {});
   }
 
   // General command implementations
   Future<void> _executeGoBack() async {
-    _onFeatureAction?.call(FeatureAction.goBack, {});
+    await _onFeatureAction?.call(FeatureAction.goBack, {});
     await _audioFeedback.speak('Going back');
   }
 
   Future<void> _executeCancel() async {
-    _onFeatureAction?.call(FeatureAction.cancel, {});
+    await _onFeatureAction?.call(FeatureAction.cancel, {});
     await _audioFeedback.speak('Cancelled');
   }
 
   Future<void> _executeStop() async {
     await _audioFeedback.stopSpeaking();
-    _onFeatureAction?.call(FeatureAction.stop, {});
+    await _onFeatureAction?.call(FeatureAction.stop, {'stopListening': true});
   }
 
   // Note: Repeat functionality would need to track last spoken text

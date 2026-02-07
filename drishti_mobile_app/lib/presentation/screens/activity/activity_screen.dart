@@ -6,8 +6,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
+import '../../../generated/l10n/app_localizations.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_strings.dart';
 import '../../../data/models/activity_model.dart';
 
 class ActivityScreen extends StatefulWidget {
@@ -18,46 +18,47 @@ class ActivityScreen extends StatefulWidget {
 }
 
 class _ActivityScreenState extends State<ActivityScreen> {
-  // Sample activity data
-  final List<ActivityModel> _activities = [
-    ActivityModel(
-      id: '1',
-      type: ActivityType.alert,
-      title: 'Critical Alert Detected',
-      description: 'Vehicle approaching rapidly from left side',
-      severity: 'critical',
-      timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
-    ),
-    ActivityModel(
-      id: '2',
-      type: ActivityType.voice,
-      title: 'Voice Command',
-      description: 'Processed command: "Show obstacles"',
-      timestamp: DateTime.now().subtract(const Duration(minutes: 15)),
-    ),
-    ActivityModel(
-      id: '3',
-      type: ActivityType.identify,
-      title: 'Person Identified',
-      description: 'Recognized: John Doe (Father)',
-      timestamp: DateTime.now().subtract(const Duration(hours: 1)),
-    ),
-    ActivityModel(
-      id: '4',
-      type: ActivityType.scan,
-      title: 'Scene Scanned',
-      description: 'Clear path ahead, no obstacles detected',
-      timestamp: DateTime.now().subtract(const Duration(hours: 2)),
-    ),
-    ActivityModel(
-      id: '5',
-      type: ActivityType.alert,
-      title: 'Warning',
-      description: 'Uneven surface detected ahead',
-      severity: 'medium',
-      timestamp: DateTime.now().subtract(const Duration(hours: 3)),
-    ),
-  ];
+  List<ActivityModel> _getLocalizedActivities(AppLocalizations l10n) {
+    return [
+      ActivityModel(
+        id: '1',
+        type: ActivityType.alert,
+        title: l10n.criticalAlertDetected,
+        description: l10n.vehicleApproaching,
+        severity: 'critical',
+        timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
+      ),
+      ActivityModel(
+        id: '2',
+        type: ActivityType.voice,
+        title: l10n.voiceCommand,
+        description: l10n.voiceCommandProcessed,
+        timestamp: DateTime.now().subtract(const Duration(minutes: 15)),
+      ),
+      ActivityModel(
+        id: '3',
+        type: ActivityType.identify,
+        title: l10n.personIdentified,
+        description: 'Recognized: John Doe (Father)',
+        timestamp: DateTime.now().subtract(const Duration(hours: 1)),
+      ),
+      ActivityModel(
+        id: '4',
+        type: ActivityType.scan,
+        title: l10n.sceneScanned,
+        description: l10n.clearPathAhead,
+        timestamp: DateTime.now().subtract(const Duration(hours: 2)),
+      ),
+      ActivityModel(
+        id: '5',
+        type: ActivityType.alert,
+        title: l10n.warning,
+        description: l10n.unevenSurface,
+        severity: 'medium',
+        timestamp: DateTime.now().subtract(const Duration(hours: 3)),
+      ),
+    ];
+  }
 
   @override
   void initState() {
@@ -66,6 +67,8 @@ class _ActivityScreenState extends State<ActivityScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
@@ -78,7 +81,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    AppStrings.history,
+                    l10n.history,
                     style: Theme.of(context).textTheme.displaySmall?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: AppColors.primaryBlue,
@@ -87,7 +90,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
                   IconButton(
                     onPressed: () {},
                     icon: const Icon(Icons.filter_list),
-                    tooltip: 'Filter',
+                    tooltip: l10n.filter,
                   ),
                 ],
               ).animate().fadeIn(duration: 300.ms),
@@ -95,49 +98,56 @@ class _ActivityScreenState extends State<ActivityScreen> {
 
             // Activity list
             Expanded(
-              child: _activities.isEmpty
-                  ? _buildEmptyState()
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      itemCount: _activities.length,
-                      itemBuilder: (context, index) {
-                        final activity = _activities[index];
-                        final showDateHeader =
-                            index == 0 ||
-                            !_isSameDay(
-                              _activities[index - 1].timestamp,
-                              activity.timestamp,
-                            );
+              child: Builder(
+                builder: (context) {
+                  final l10n = AppLocalizations.of(context)!;
+                  final activities = _getLocalizedActivities(l10n);
+                  
+                  return activities.isEmpty
+                      ? _buildEmptyState(l10n)
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          itemCount: activities.length,
+                          itemBuilder: (context, index) {
+                            final activity = activities[index];
+                            final showDateHeader =
+                                index == 0 ||
+                                !_isSameDay(
+                                  activities[index - 1].timestamp,
+                                  activity.timestamp,
+                                );
 
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (showDateHeader)
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                  top: 16,
-                                  bottom: 8,
-                                ),
-                                child: Text(
-                                  _getDateHeader(activity.timestamp),
-                                  style: Theme.of(context).textTheme.titleMedium
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.textSecondaryLight,
-                                      ),
-                                ),
-                              ),
-                            _ActivityTile(activity: activity)
-                                .animate()
-                                .fadeIn(
-                                  delay: Duration(milliseconds: 100 * index),
-                                  duration: 300.ms,
-                                )
-                                .slideX(begin: 0.1, end: 0),
-                          ],
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (showDateHeader)
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                      top: 16,
+                                      bottom: 8,
+                                    ),
+                                    child: Text(
+                                      _getDateHeader(activity.timestamp, l10n),
+                                      style: Theme.of(context).textTheme.titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.textSecondaryLight,
+                                          ),
+                                    ),
+                                  ),
+                                _ActivityTile(activity: activity, l10n: l10n)
+                                    .animate()
+                                    .fadeIn(
+                                      delay: Duration(milliseconds: 100 * index),
+                                      duration: 300.ms,
+                                    )
+                                    .slideX(begin: 0.1, end: 0),
+                              ],
+                            );
+                          },
                         );
-                      },
-                    ),
+                },
+              ),
             ),
           ],
         ),
@@ -145,7 +155,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(AppLocalizations l10n) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -157,12 +167,12 @@ class _ActivityScreenState extends State<ActivityScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            AppStrings.noActivity,
+            l10n.noActivity,
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 8),
           Text(
-            'Your activity history will appear here',
+            l10n.activityHistoryWillAppear,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
         ],
@@ -174,11 +184,11 @@ class _ActivityScreenState extends State<ActivityScreen> {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
-  String _getDateHeader(DateTime date) {
+  String _getDateHeader(DateTime date, AppLocalizations l10n) {
     final now = DateTime.now();
-    if (_isSameDay(date, now)) return 'Today';
+    if (_isSameDay(date, now)) return l10n.today;
     if (_isSameDay(date, now.subtract(const Duration(days: 1)))) {
-      return 'Yesterday';
+      return l10n.yesterday;
     }
     return DateFormat('EEEE, MMM d').format(date);
   }
@@ -186,8 +196,9 @@ class _ActivityScreenState extends State<ActivityScreen> {
 
 class _ActivityTile extends StatelessWidget {
   final ActivityModel activity;
+  final AppLocalizations l10n;
 
-  const _ActivityTile({required this.activity});
+  const _ActivityTile({required this.activity, required this.l10n});
 
   @override
   Widget build(BuildContext context) {
@@ -344,7 +355,7 @@ class _ActivityTile extends StatelessWidget {
     final now = DateTime.now();
     final diff = now.difference(time);
 
-    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inMinutes < 1) return l10n.justNow;
     if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
     if (diff.inHours < 24) return '${diff.inHours} hours ago';
     return DateFormat('h:mm a').format(time);

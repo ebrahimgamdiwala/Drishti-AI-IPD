@@ -36,6 +36,7 @@ class VoiceService {
   double _speechRate = 0.5; // 0.0 to 1.0
   double _pitch = 1.0; // 0.5 to 2.0
   double _volume = 1.0; // 0.0 to 1.0
+  String _currentLanguage = 'en-IN'; // Current TTS language
 
   // Hotword configuration
   static const String hotword = 'hey vision';
@@ -60,7 +61,7 @@ class VoiceService {
     }
 
     try {
-      await _tts.setLanguage('en-US');
+      await _tts.setLanguage(_currentLanguage);
       await _tts.setSpeechRate(_speechRate);
       await _tts.setPitch(_pitch);
       await _tts.setVolume(_volume);
@@ -75,6 +76,17 @@ class VoiceService {
       // TTS initialization failed
     }
   }
+
+  /// Set TTS language
+  Future<void> setLanguage(String languageCode) async {
+    _currentLanguage = languageCode;
+    if (_ttsInitialized && !kIsWeb) {
+      await _tts.setLanguage(languageCode);
+    }
+  }
+
+  /// Get current language
+  String get currentLanguage => _currentLanguage;
 
   // Audio Level Stream
   final _audioLevelController = StreamController<double>.broadcast();
@@ -532,6 +544,10 @@ class VoiceService {
   Future<void> resumeHotwordListening() async {
     if (_onHotwordDetected != null) {
       debugPrint('[VoiceService] 🔄 Resuming continuous hotword listening');
+      
+      // Cancel any pending restart timers to prevent overlaps
+      _continuousRestartTimer?.cancel();
+      
       _isHotwordListening = true;
       _isContinuousListening = true;
       _hotwordDetected = false;

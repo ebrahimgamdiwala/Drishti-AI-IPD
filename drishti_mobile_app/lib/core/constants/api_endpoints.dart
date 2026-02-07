@@ -7,7 +7,7 @@ class ApiEndpoints {
   ApiEndpoints._();
 
   // Base URL - point mobile clients to your PC on LAN
-  static const String baseUrl = 'http://192.168.1.7:8000';
+  static const String baseUrl = 'http://192.168.1.8:8000';
 
   // Auth Endpoints
   static const String login = '/api/auth/login';
