@@ -48,7 +48,6 @@ class AudioMessage {
 class AudioFeedbackEngine {
   final VoiceService _voiceService;
   final List<AudioMessage> _messageQueue = [];
-  bool _isSpeaking = false;
   bool _isProcessing = false;
 
   AudioFeedbackEngine({required VoiceService voiceService})
@@ -96,21 +95,14 @@ class AudioFeedbackEngine {
     try {
       // Stop current speech
       await _voiceService.stopSpeaking();
-      _isSpeaking = false;
 
       // Clear low priority messages from queue
       _messageQueue.removeWhere((msg) => msg.priority == AudioPriority.low);
 
-      // Speak immediately
-      _isSpeaking = true;
-      try {
-        await _voiceService.speak(message);
-      } finally {
-        _isSpeaking = false;
-      }
+      // Speak immediately - VoiceService.speak() now waits for completion
+      await _voiceService.speak(message);
     } catch (e) {
       debugPrint('[AudioFeedback] Error in speakImmediate: $e');
-      _isSpeaking = false;
     }
   }
 
@@ -599,22 +591,19 @@ class AudioFeedbackEngine {
 
     try {
       while (_messageQueue.isNotEmpty) {
-        // Wait if currently speaking
-        while (_isSpeaking) {
+        // Wait if currently speaking (check VoiceService state)
+        while (_voiceService.isSpeaking) {
           await Future.delayed(const Duration(milliseconds: 100));
         }
 
         // Get next message (already in priority order)
         final message = _messageQueue.removeAt(0);
 
-        // Speak the message
-        _isSpeaking = true;
+        // Speak the message - VoiceService.speak() now waits for completion
         try {
           await _voiceService.speak(message.text);
         } catch (e) {
           debugPrint('[AudioFeedback] Error speaking message: $e');
-        } finally {
-          _isSpeaking = false;
         }
 
         // Small delay between messages for clarity
@@ -626,7 +615,7 @@ class AudioFeedbackEngine {
   }
 
   /// Check if currently speaking
-  bool get isSpeaking => _isSpeaking;
+  bool get isSpeaking => _voiceService.isSpeaking;
 
   /// Get the number of messages in the queue
   int get queueLength => _messageQueue.length;
@@ -635,7 +624,6 @@ class AudioFeedbackEngine {
   Future<void> stopSpeaking() async {
     try {
       await _voiceService.stopSpeaking();
-      _isSpeaking = false;
       _messageQueue.clear();
       debugPrint('[AudioFeedback] Speaking stopped');
     } catch (e) {
@@ -646,7 +634,6 @@ class AudioFeedbackEngine {
   /// Dispose resources
   void dispose() {
     _messageQueue.clear();
-    _isSpeaking = false;
     _isProcessing = false;
     debugPrint('[AudioFeedback] Audio feedback engine disposed');
   }

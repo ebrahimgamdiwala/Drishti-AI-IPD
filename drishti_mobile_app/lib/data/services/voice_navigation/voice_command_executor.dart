@@ -543,9 +543,9 @@ class VoiceCommandExecutor {
 
   // Relatives implementations
   Future<void> _executeAddRelative() async {
-    // Trigger the voice-guided add relative flow
-    await _onFeatureAction?.call(FeatureAction.addRelative, {'voiceGuided': true});
-    await _audioFeedback.speak('Opening voice-guided form to add a new relative');
+    // Trigger the hands-free voice-guided add relative flow
+    await _onFeatureAction?.call(FeatureAction.addRelative, {'voiceGuided': true, 'handsFree': true});
+    // Don't speak here - the flow will handle all audio feedback
   }
 
   Future<void> _executeListRelatives() async {

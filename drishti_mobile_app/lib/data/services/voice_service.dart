@@ -24,9 +24,11 @@ class VoiceService {
   bool _hotwordDetected = false;
   bool _isContinuousListening = false;
   bool _isRestarting = false; // Prevent overlapping restarts
+  bool _isSpeaking = false; // Track if TTS is currently speaking
   Timer? _hotwordTimer;
   Timer? _continuousRestartTimer;
   DateTime? _lastRestartTime; // Track last restart to prevent rapid restarts
+  Completer<void>? _ttsCompleter; // Track TTS completion
 
   // Track restart attempts to implement exponential backoff
   int _restartAttempts = 0;
@@ -68,7 +70,24 @@ class VoiceService {
 
       // Set completion handler
       _tts.setCompletionHandler(() {
-        // Speech completed
+        debugPrint('[VoiceService] TTS completed');
+        _isSpeaking = false;
+        _ttsCompleter?.complete();
+        _ttsCompleter = null;
+      });
+
+      // Set start handler
+      _tts.setStartHandler(() {
+        debugPrint('[VoiceService] TTS started');
+        _isSpeaking = true;
+      });
+
+      // Set error handler
+      _tts.setErrorHandler((msg) {
+        debugPrint('[VoiceService] TTS error: $msg');
+        _isSpeaking = false;
+        _ttsCompleter?.complete();
+        _ttsCompleter = null;
       });
 
       _ttsInitialized = true;
@@ -148,22 +167,62 @@ class VoiceService {
 
   // === Text-to-Speech ===
 
-  /// Speak text
+  /// Speak text and wait for completion
   Future<void> speak(String text) async {
     if (!_ttsInitialized) await initTts();
     if (kIsWeb) return;
 
     // Stop any current speech
     await _tts.stop();
+    _isSpeaking = false;
+    _ttsCompleter?.complete();
+    _ttsCompleter = null;
+
+    // Stop listening while speaking to prevent self-voice pickup
+    final wasListening = _stt.isListening;
+    if (wasListening) {
+      debugPrint('[VoiceService] 🔇 Stopping microphone for TTS');
+      await _stt.stop();
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+
+    // Create new completer for this speech
+    _ttsCompleter = Completer<void>();
+    _isSpeaking = true;
 
     // Speak new text
     await _tts.speak(text);
+
+    // Wait for TTS to complete
+    try {
+      await _ttsCompleter!.future.timeout(
+        Duration(seconds: text.length ~/ 10 + 5), // Estimate max duration
+        onTimeout: () {
+          debugPrint('[VoiceService] TTS timeout, assuming complete');
+          _isSpeaking = false;
+        },
+      );
+    } catch (e) {
+      debugPrint('[VoiceService] TTS wait error: $e');
+      _isSpeaking = false;
+    }
+
+    // Add small buffer after TTS completes
+    await Future.delayed(const Duration(milliseconds: 300));
+    
+    debugPrint('[VoiceService] 🔊 TTS finished, microphone can resume');
   }
+
+  /// Check if currently speaking
+  bool get isSpeaking => _isSpeaking;
 
   /// Stop speaking
   Future<void> stopSpeaking() async {
     if (kIsWeb) return;
     await _tts.stop();
+    _isSpeaking = false;
+    _ttsCompleter?.complete();
+    _ttsCompleter = null;
   }
 
   /// Set speech rate (0.0 to 1.0)
@@ -207,10 +266,18 @@ class VoiceService {
   }) async {
     debugPrint('[VoiceService] startListening called');
 
-    // Stop hotword listening when starting regular listening
+    // Store hotword state to resume later
+    final wasHotwordListening = _isHotwordListening;
+
+    // Temporarily pause hotword listening when starting regular listening
     if (_isHotwordListening) {
       debugPrint('[VoiceService] Pausing hotword listening for voice command');
-      await stopHotwordListening();
+      _isContinuousListening = false;
+      _continuousRestartTimer?.cancel();
+      if (_stt.isListening) {
+        await _stt.stop();
+        await Future.delayed(const Duration(milliseconds: 200));
+      }
     }
 
     if (!_sttInitialized) {
@@ -218,6 +285,17 @@ class VoiceService {
       if (!initialized) {
         onError?.call('Speech recognition not available');
         return;
+      }
+    }
+
+    // Wait for any ongoing TTS to complete
+    if (_isSpeaking) {
+      debugPrint('[VoiceService] Waiting for TTS to complete before listening...');
+      await Future.delayed(const Duration(milliseconds: 500));
+      int waitCount = 0;
+      while (_isSpeaking && waitCount < 20) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        waitCount++;
       }
     }
 
@@ -238,12 +316,22 @@ class VoiceService {
           if (result.finalResult) {
             onResult(result.recognizedWords);
             _isListening = false;
+            
+            // Resume hotword listening if it was active before
+            if (wasHotwordListening) {
+              Future.delayed(const Duration(milliseconds: 500), () {
+                if (!_isContinuousListening && _onHotwordDetected != null) {
+                  debugPrint('[VoiceService] Auto-resuming hotword listening');
+                  resumeHotwordListening();
+                }
+              });
+            }
           }
         },
         onSoundLevelChange: (level) {
           _audioLevelController.add(level);
         },
-        listenFor: listenFor ?? const Duration(seconds: 10),
+        listenFor: listenFor ?? const Duration(seconds: 15),
         pauseFor: const Duration(seconds: 3),
         listenOptions: SpeechListenOptions(
           partialResults: false,
@@ -253,6 +341,16 @@ class VoiceService {
     } catch (e) {
       _isListening = false;
       onError?.call('Failed to start listening');
+      
+      // Resume hotword listening even on error
+      if (wasHotwordListening) {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (!_isContinuousListening && _onHotwordDetected != null) {
+            debugPrint('[VoiceService] Auto-resuming hotword listening after error');
+            resumeHotwordListening();
+          }
+        });
+      }
     }
   }
 
@@ -305,6 +403,9 @@ class VoiceService {
     _hotwordTimer?.cancel();
     _continuousRestartTimer?.cancel();
     _isContinuousListening = false;
+    _isSpeaking = false;
+    _ttsCompleter?.complete();
+    _ttsCompleter = null;
     _audioLevelController.close();
   }
 
@@ -542,7 +643,7 @@ class VoiceService {
 
   /// Resume hotword listening after voice command processing
   Future<void> resumeHotwordListening() async {
-    if (_onHotwordDetected != null) {
+    if (_onHotwordDetected != null && !_isContinuousListening) {
       debugPrint('[VoiceService] 🔄 Resuming continuous hotword listening');
       
       // Cancel any pending restart timers to prevent overlaps
@@ -553,8 +654,18 @@ class VoiceService {
       _hotwordDetected = false;
       _restartAttempts = 0;
 
-      // Wait a bit for any TTS to finish before resuming
-      await Future.delayed(const Duration(milliseconds: 800));
+      // Wait for any TTS to complete before resuming
+      if (_isSpeaking) {
+        debugPrint('[VoiceService] Waiting for TTS to finish before resuming...');
+        int waitCount = 0;
+        while (_isSpeaking && waitCount < 30) {
+          await Future.delayed(const Duration(milliseconds: 100));
+          waitCount++;
+        }
+      }
+
+      // Additional buffer to ensure TTS audio has cleared
+      await Future.delayed(const Duration(milliseconds: 500));
 
       if (_isContinuousListening) {
         await _startContinuousListenCycle();

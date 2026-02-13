@@ -192,6 +192,11 @@ class _MainShellState extends State<MainShell> {
     }
 
     if (targetIndex != null && targetIndex != _currentIndex) {
+      // Clear any pending audio feedback from previous screen
+      final voiceNav = context.read<VoiceNavigationProvider>();
+      voiceNav.audioFeedback.clearQueue();
+      voiceNav.audioFeedback.stopSpeaking();
+      
       setState(() {
         _currentIndex = targetIndex!;
       });
@@ -401,6 +406,11 @@ class _MainShellState extends State<MainShell> {
       selected: isSelected,
       child: InkWell(
         onTap: () {
+          // Clear any pending audio feedback from previous screen
+          final voiceNav = context.read<VoiceNavigationProvider>();
+          voiceNav.audioFeedback.clearQueue();
+          voiceNav.audioFeedback.stopSpeaking();
+          
           setState(() {
             _currentIndex = index;
           });

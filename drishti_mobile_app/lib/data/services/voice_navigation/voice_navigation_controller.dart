@@ -19,6 +19,7 @@ import 'voice_router.dart';
 import 'phone_vision_provider.dart';
 import 'voice_command_executor.dart';
 import '../../../presentation/screens/relatives/voice_add_relative_sheet.dart';
+import '../../../presentation/screens/relatives/voice_relative_flow_screen.dart';
 
 /// Central controller for voice navigation system
 ///
@@ -662,7 +663,10 @@ class VoiceNavigationController extends ChangeNotifier {
       // Relatives management
       case FeatureAction.addRelative:
         final voiceGuided = params['voiceGuided'] as bool? ?? false;
-        if (voiceGuided) {
+        final handsFree = params['handsFree'] as bool? ?? false;
+        if (voiceGuided && handsFree) {
+          _showHandsFreeAddRelative();
+        } else if (voiceGuided) {
           _showVoiceGuidedAddRelative();
         }
         break;
@@ -749,6 +753,33 @@ class VoiceNavigationController extends ChangeNotifier {
     ).then((result) {
       if (result != null) {
         debugPrint('[VoiceNav] Relative added via voice: $result');
+      }
+    });
+  }
+
+  /// Show hands-free voice-guided add relative flow (full screen)
+  void _showHandsFreeAddRelative() {
+    final context = _navigatorKey?.currentContext;
+    if (context == null) {
+      debugPrint('[VoiceNav] Cannot show hands-free flow: no context');
+      return;
+    }
+
+    // Navigate to full-screen hands-free flow
+    Navigator.of(context).push(
+      MaterialPageRoute<dynamic>(
+        builder: (context) => const VoiceRelativeFlowScreen(),
+        fullscreenDialog: true,
+      ),
+    ).then((result) {
+      if (result != null) {
+        debugPrint('[VoiceNav] Relative added via hands-free flow: $result');
+        // Resume hotword listening after flow completes
+        _voiceService.resumeHotwordListening();
+      } else {
+        debugPrint('[VoiceNav] Hands-free flow cancelled');
+        // Resume hotword listening even if cancelled
+        _voiceService.resumeHotwordListening();
       }
     });
   }

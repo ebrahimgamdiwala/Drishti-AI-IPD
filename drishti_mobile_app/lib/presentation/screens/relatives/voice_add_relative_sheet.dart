@@ -67,8 +67,7 @@ class _VoiceAddRelativeSheetState extends State<VoiceAddRelativeSheet> {
     await _voiceService.speak(
       'Let\'s add a new relative. I\'ll guide you through each step. Say "stop listening" at any time to cancel.',
     );
-    // Wait for TTS to finish
-    await Future.delayed(const Duration(milliseconds: 3000));
+    // TTS completion is now handled automatically
     if (mounted) {
       _moveToNextStep();
     }
@@ -85,7 +84,6 @@ class _VoiceAddRelativeSheetState extends State<VoiceAddRelativeSheet> {
       case VoiceFormStep.name:
         if (_nameController.text.isEmpty) {
           await _voiceService.speak('Please provide a name first');
-          await Future.delayed(const Duration(milliseconds: 1500));
           await _promptForName();
         } else {
           setState(() => _currentStep = VoiceFormStep.relationship);
@@ -95,7 +93,6 @@ class _VoiceAddRelativeSheetState extends State<VoiceAddRelativeSheet> {
       case VoiceFormStep.relationship:
         if (_relationshipController.text.isEmpty) {
           await _voiceService.speak('Please provide a relationship first');
-          await Future.delayed(const Duration(milliseconds: 1500));
           await _promptForRelationship();
         } else {
           setState(() => _currentStep = VoiceFormStep.photo);
@@ -105,7 +102,6 @@ class _VoiceAddRelativeSheetState extends State<VoiceAddRelativeSheet> {
       case VoiceFormStep.photo:
         if (_selectedImage == null) {
           await _voiceService.speak('Please take a photo first');
-          await Future.delayed(const Duration(milliseconds: 1500));
           await _promptForPhoto();
         } else {
           setState(() => _currentStep = VoiceFormStep.notes);
@@ -128,8 +124,6 @@ class _VoiceAddRelativeSheetState extends State<VoiceAddRelativeSheet> {
     if (!mounted) return;
     
     await _voiceService.speak('What is the person\'s name? Please speak clearly.');
-    // Wait for TTS to finish
-    await Future.delayed(const Duration(milliseconds: 2500));
     
     if (!mounted) return;
     await _listenForInput((text) async {
@@ -139,7 +133,6 @@ class _VoiceAddRelativeSheetState extends State<VoiceAddRelativeSheet> {
         _nameController.text = text;
       });
       await _voiceService.speak('Got it. Name is $text');
-      await Future.delayed(const Duration(milliseconds: 2000));
     }, shouldAutoAdvance: true);
   }
 
@@ -149,8 +142,6 @@ class _VoiceAddRelativeSheetState extends State<VoiceAddRelativeSheet> {
     await _voiceService.speak(
       'What is their relationship to you? For example, mother, father, friend, or sibling.',
     );
-    // Wait for TTS to finish
-    await Future.delayed(const Duration(milliseconds: 4000));
     
     if (!mounted) return;
     await _listenForInput((text) async {
@@ -160,7 +151,6 @@ class _VoiceAddRelativeSheetState extends State<VoiceAddRelativeSheet> {
         _relationshipController.text = text;
       });
       await _voiceService.speak('Relationship set to $text');
-      await Future.delayed(const Duration(milliseconds: 2000));
     }, shouldAutoAdvance: true);
   }
 
@@ -170,8 +160,6 @@ class _VoiceAddRelativeSheetState extends State<VoiceAddRelativeSheet> {
     await _voiceService.speak(
       'Now let\'s take a photo. Say "take photo" to open the camera, or "skip" to continue without a photo.',
     );
-    // Wait for TTS to finish
-    await Future.delayed(const Duration(milliseconds: 4000));
     
     if (!mounted) return;
     await _listenForInput((text) async {
@@ -184,11 +172,9 @@ class _VoiceAddRelativeSheetState extends State<VoiceAddRelativeSheet> {
         await _pickImage();
       } else if (normalized.contains('skip')) {
         await _voiceService.speak('Skipping photo');
-        await Future.delayed(const Duration(milliseconds: 1500));
         if (mounted) _moveToNextStep();
       } else {
         await _voiceService.speak('Say "take photo" or "skip"');
-        await Future.delayed(const Duration(milliseconds: 2000));
         if (mounted) await _promptForPhoto();
       }
     }, shouldAutoAdvance: false);
@@ -200,8 +186,6 @@ class _VoiceAddRelativeSheetState extends State<VoiceAddRelativeSheet> {
     await _voiceService.speak(
       'Would you like to add any notes? Say the notes, or say "skip" to continue.',
     );
-    // Wait for TTS to finish
-    await Future.delayed(const Duration(milliseconds: 3500));
     
     if (!mounted) return;
     await _listenForInput((text) async {
@@ -210,13 +194,11 @@ class _VoiceAddRelativeSheetState extends State<VoiceAddRelativeSheet> {
       final normalized = text.toLowerCase().trim();
       if (normalized.contains('skip') || normalized.contains('no')) {
         await _voiceService.speak('No notes added');
-        await Future.delayed(const Duration(milliseconds: 1500));
       } else {
         setState(() {
           _notesController.text = text;
         });
         await _voiceService.speak('Notes added');
-        await Future.delayed(const Duration(milliseconds: 1500));
       }
     }, shouldAutoAdvance: true);
   }
@@ -229,8 +211,6 @@ class _VoiceAddRelativeSheetState extends State<VoiceAddRelativeSheet> {
         'Say "save" to confirm, or "cancel" to go back.';
     
     await _voiceService.speak(summary);
-    // Wait for TTS to finish
-    await Future.delayed(const Duration(milliseconds: 4000));
     
     if (!mounted) return;
     await _listenForInput((text) async {
@@ -241,11 +221,10 @@ class _VoiceAddRelativeSheetState extends State<VoiceAddRelativeSheet> {
         await _saveRelative();
       } else if (normalized.contains('cancel') || normalized.contains('back')) {
         await _voiceService.speak('Cancelled');
-        await Future.delayed(const Duration(milliseconds: 1000));
+        await Future.delayed(const Duration(milliseconds: 500));
         if (mounted) Navigator.pop(context);
       } else {
         await _voiceService.speak('Say "save" or "cancel"');
-        await Future.delayed(const Duration(milliseconds: 2000));
         if (mounted) await _promptForConfirmation();
       }
     }, shouldAutoAdvance: false);
@@ -270,9 +249,9 @@ class _VoiceAddRelativeSheetState extends State<VoiceAddRelativeSheet> {
         // Check for stop command
         final normalized = text.toLowerCase().trim();
         if (normalized.contains('stop listening') || 
-            normalized.contains('stop') && normalized.contains('listening')) {
+            (normalized.contains('stop') && normalized.contains('listening'))) {
           await _voiceService.speak('Stopping voice input. Closing form.');
-          await Future.delayed(const Duration(milliseconds: 1500));
+          await Future.delayed(const Duration(milliseconds: 500));
           if (mounted) Navigator.pop(context);
           return;
         }
@@ -281,7 +260,7 @@ class _VoiceAddRelativeSheetState extends State<VoiceAddRelativeSheet> {
         
         // Auto-advance if requested
         if (shouldAutoAdvance && mounted) {
-          await Future.delayed(const Duration(milliseconds: 500));
+          await Future.delayed(const Duration(milliseconds: 300));
           if (mounted) _moveToNextStep();
         }
       },
@@ -290,7 +269,6 @@ class _VoiceAddRelativeSheetState extends State<VoiceAddRelativeSheet> {
         
         setState(() => _isListening = false);
         await _voiceService.speak('Sorry, I didn\'t catch that. Please try again.');
-        await Future.delayed(const Duration(milliseconds: 2000));
         
         if (mounted) {
           await _listenForInput(onResult, shouldAutoAdvance: shouldAutoAdvance);
@@ -315,7 +293,6 @@ class _VoiceAddRelativeSheetState extends State<VoiceAddRelativeSheet> {
         _selectedImage = File(image.path);
       });
       await _voiceService.speak('Photo captured successfully');
-      await Future.delayed(const Duration(milliseconds: 1000));
       _moveToNextStep();
     } else {
       await _voiceService.speak('No photo taken. Say "take photo" to try again, or "skip" to continue.');

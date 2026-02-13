@@ -143,6 +143,12 @@ class VoiceRouter {
   /// Requirements: 7.1, 7.4, 7.5, 7.6, 7.7, 7.8
   Future<void> navigateTo(String routeName) async {
     try {
+      // Clear any pending audio feedback from previous screen
+      _audioFeedback.clearQueue();
+      
+      // Stop any currently speaking audio
+      await _audioFeedback.stopSpeaking();
+      
       // Get the friendly screen name for announcement
       final screenName =
           VoiceRoutes.routeToScreenName[routeName] ??
@@ -204,6 +210,12 @@ class VoiceRouter {
     }
 
     try {
+      // Clear any pending audio feedback from previous screen
+      _audioFeedback.clearQueue();
+      
+      // Stop any currently speaking audio
+      await _audioFeedback.stopSpeaking();
+      
       // Check if we can go back
       // ignore: use_build_context_synchronously
       if (Navigator.of(context).canPop()) {
@@ -234,6 +246,12 @@ class VoiceRouter {
     }
 
     try {
+      // Clear any pending audio feedback from previous screen
+      _audioFeedback.clearQueue();
+      
+      // Stop any currently speaking audio
+      await _audioFeedback.stopSpeaking();
+      
       await _audioFeedback.announceNavigation('Home');
 
       // Navigate to home, replacing the current route

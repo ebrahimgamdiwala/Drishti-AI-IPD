@@ -52,11 +52,11 @@ extension MicrophoneStateExtension on MicrophoneState {
   String get audioCue {
     switch (this) {
       case MicrophoneState.idle:
-        return 'Ready';
+        return ''; // No cue for idle (silent transition)
       case MicrophoneState.listening:
-        return 'Listening';
+        return ''; // No cue for listening (handled by hotword detection)
       case MicrophoneState.processing:
-        return 'Processing';
+        return ''; // No cue for processing (silent transition)
       case MicrophoneState.speaking:
         return ''; // No cue when speaking (would interrupt the response)
     }
