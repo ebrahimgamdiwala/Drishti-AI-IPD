@@ -219,10 +219,20 @@ ThemeData lightTheme = ThemeData(
 
   // Dialog - Glassmorphism
   dialogTheme: DialogThemeData(
-    backgroundColor: AppColors.glassWhite,
+    backgroundColor: AppColors.lightCard.withValues(alpha: 0.98), // More opaque for better readability
     elevation: 0,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(AppColors.radiusLarge),
+      side: BorderSide(color: AppColors.glassBorder, width: 1.5),
+    ),
+  ),
+
+  // Bottom Sheet - Glassmorphism
+  bottomSheetTheme: BottomSheetThemeData(
+    backgroundColor: AppColors.lightCard.withValues(alpha: 0.98),
+    elevation: 0,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(AppColors.radiusLarge)),
       side: BorderSide(color: AppColors.glassBorder, width: 1.5),
     ),
   ),

@@ -99,10 +99,16 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _initialize() async {
-    final authProvider = context.read<AuthProvider>();
-    await authProvider.init();
-
-    _isAuthenticated = authProvider.isAuthenticated;
+    // Defer initialization until after the first frame to avoid calling
+    // notifyListeners during build
+    await Future.microtask(() async {
+      final authProvider = context.read<AuthProvider>();
+      await authProvider.init();
+      
+      if (!mounted) return;
+      
+      _isAuthenticated = authProvider.isAuthenticated;
+    });
 
     await Future.delayed(const Duration(milliseconds: 2000));
 

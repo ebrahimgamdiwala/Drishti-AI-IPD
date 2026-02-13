@@ -7,7 +7,11 @@ class ApiEndpoints {
   ApiEndpoints._();
 
   // Base URL - point mobile clients to your PC on LAN
-  static const String baseUrl = 'http://192.168.1.8:8000';
+  // Use your PC's IP address (check with ipconfig on Windows)
+  // For Android Emulator, use 10.0.2.2 to access host machine
+  // For iOS Simulator, use localhost or 127.0.0.1
+  // For physical device, use your PC's LAN IP (e.g., 192.168.1.11)
+  static const String baseUrl = 'http://192.168.1.11:8000';
 
   // Auth Endpoints
   static const String login = '/api/auth/login';

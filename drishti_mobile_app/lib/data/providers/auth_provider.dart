@@ -32,8 +32,8 @@ class AuthProvider extends ChangeNotifier {
 
   /// Initialize auth state
   Future<void> init() async {
+    // Don't call notifyListeners at the start to avoid issues during build
     _status = AuthStatus.loading;
-    notifyListeners();
 
     try {
       // Check for stored user
@@ -50,6 +50,7 @@ class AuthProvider extends ChangeNotifier {
       _status = AuthStatus.unauthenticated;
     }
 
+    // Only notify once at the end
     notifyListeners();
   }
 

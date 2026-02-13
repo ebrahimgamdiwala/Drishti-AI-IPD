@@ -216,10 +216,20 @@ ThemeData darkTheme = ThemeData(
 
   // Dialog - Glassmorphism
   dialogTheme: DialogThemeData(
-    backgroundColor: AppColors.glassDarkSurface,
+    backgroundColor: AppColors.darkCard.withValues(alpha: 0.98), // More opaque for better readability
     elevation: 0,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(AppColors.radiusLarge),
+      side: BorderSide(color: AppColors.glassDarkBorder, width: 1.5),
+    ),
+  ),
+
+  // Bottom Sheet - Glassmorphism
+  bottomSheetTheme: BottomSheetThemeData(
+    backgroundColor: AppColors.darkCard.withValues(alpha: 0.98),
+    elevation: 0,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(AppColors.radiusLarge)),
       side: BorderSide(color: AppColors.glassDarkBorder, width: 1.5),
     ),
   ),

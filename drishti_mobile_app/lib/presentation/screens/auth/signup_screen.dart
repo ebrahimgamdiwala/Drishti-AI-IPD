@@ -15,6 +15,7 @@ import '../../../routes/app_routes.dart';
 import '../../widgets/buttons/gradient_button.dart';
 import '../../widgets/buttons/social_button.dart';
 import '../../widgets/inputs/custom_text_field.dart';
+import '../../widgets/gradient_background.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -105,8 +106,10 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
+    return GradientBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Form(
@@ -346,6 +349,7 @@ class _SignupScreenState extends State<SignupScreen> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

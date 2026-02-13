@@ -30,8 +30,12 @@ async def init_db():
     
     settings = get_settings()
     
-    # Create Motor client
-    _client = AsyncIOMotorClient(settings.mongo_uri)
+    # Create Motor client with SSL configuration for Windows compatibility
+    _client = AsyncIOMotorClient(
+        settings.mongo_uri,
+        tlsAllowInvalidCertificates=True,
+        serverSelectionTimeoutMS=30000
+    )
     _db_name = _resolve_db_name(settings.mongo_uri, settings.mongo_db_name)
     db = _client[_db_name]
     

@@ -29,11 +29,11 @@ class AppColors {
   static const Color lightInputFill = Color(0xFFF1F5F9);
 
   // Glassmorphism Colors (with transparency)
-  static const Color glassWhite = Color(0x40FFFFFF);
-  static const Color glassLight = Color(0x30FFFFFF);
-  static const Color glassMedium = Color(0x20FFFFFF);
-  static const Color glassDark = Color(0x15000000);
-  static const Color glassBorder = Color(0x30FFFFFF);
+  static const Color glassWhite = Color(0x66FFFFFF); // Increased from 0x40 to 0x66 for more opacity
+  static const Color glassLight = Color(0x4DFFFFFF); // Increased from 0x30 to 0x4D
+  static const Color glassMedium = Color(0x33FFFFFF); // Increased from 0x20 to 0x33
+  static const Color glassDark = Color(0x26000000); // Increased from 0x15 to 0x26
+  static const Color glassBorder = Color(0x4DFFFFFF); // Increased from 0x30 to 0x4D
 
   // Dark Theme Colors - Glassmorphism
   static const Color darkBackground = Color(0xFF000000);
@@ -45,9 +45,9 @@ class AppColors {
   static const Color darkInputFill = Color(0xFF1E293B);
 
   // Dark Glassmorphism Colors
-  static const Color glassBlack = Color(0x40000000);
-  static const Color glassDarkSurface = Color(0x20FFFFFF);
-  static const Color glassDarkBorder = Color(0x20FFFFFF);
+  static const Color glassBlack = Color(0x66000000); // Increased from 0x40 to 0x66
+  static const Color glassDarkSurface = Color(0x33FFFFFF); // Increased from 0x20 to 0x33
+  static const Color glassDarkBorder = Color(0x33FFFFFF); // Increased from 0x20 to 0x33
 
   // Text Colors
   static const Color textPrimaryLight = Color(0xFF1E293B);
