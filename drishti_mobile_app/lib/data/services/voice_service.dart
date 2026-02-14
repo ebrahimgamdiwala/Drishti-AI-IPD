@@ -29,11 +29,13 @@ class VoiceService {
   Timer? _continuousRestartTimer;
   DateTime? _lastRestartTime; // Track last restart to prevent rapid restarts
   Completer<void>? _ttsCompleter; // Track TTS completion
+  Completer<String>? _listenCompleter; // Track active listen session
+  String? _lastSttError; // Track last STT error for retry logic
 
   // Track restart attempts to implement exponential backoff
   int _restartAttempts = 0;
-  static const int _maxRestartAttempts = 10; // Cap maximum attempts
-  static const int _minRestartDelayMs = 1500; // Minimum delay between restarts
+  static const int _maxRestartAttempts = 20; // Increased cap for better persistence
+  static const int _minRestartDelayMs = 1000; // Reduced minimum delay for faster recovery
 
   double _speechRate = 0.5; // 0.0 to 1.0
   double _pitch = 1.0; // 0.5 to 2.0
@@ -124,25 +126,37 @@ class VoiceService {
       _sttInitialized = await _stt.initialize(
         onError: (error) {
           debugPrint('[VoiceService] STT Error: ${error.errorMsg}');
+          _lastSttError = error.errorMsg;
           _isListening = false;
 
           // Handle specific errors
           if (error.errorMsg == 'error_busy') {
-            // STT is busy, wait longer before restart
-            debugPrint('[VoiceService] ⚠️ STT busy, increasing backoff...');
-            _restartAttempts = (_restartAttempts + 2).clamp(
+            // STT is busy, will retry with backoff
+            debugPrint('[VoiceService] ⚠️ STT busy, will retry with backoff...');
+            _restartAttempts = (_restartAttempts + 1).clamp(
               0,
               _maxRestartAttempts,
             );
           } else if (error.errorMsg == 'error_no_match') {
-            // No speech detected - this is normal, just continue
-            debugPrint('[VoiceService] ℹ️ No speech detected (normal)');
+            // No speech detected - normal but should retry in regular listening
+            debugPrint('[VoiceService] ℹ️ No speech detected (will retry if needed)');
+            _restartAttempts = 0; // Reset on normal conditions
           } else if (error.errorMsg == 'error_speech_timeout') {
             // Speech timeout - normal when no one is talking
-            debugPrint('[VoiceService] ℹ️ Speech timeout (normal)');
+            debugPrint('[VoiceService] ℹ️ Speech timeout (will retry if needed)');
+            _restartAttempts = 0; // Reset on normal conditions
           }
 
-          // Don't trigger restart here - let status handler manage it
+          // Notify active listen completer about the error
+          if (_listenCompleter != null && !_listenCompleter!.isCompleted) {
+            _listenCompleter!.completeError(error.errorMsg);
+          }
+
+          // Trigger restart for continuous listening mode
+          if (_isContinuousListening && !_hotwordDetected && !_isRestarting) {
+            debugPrint('[VoiceService] 🔄 Scheduling restart after error...');
+            _scheduleContinuousRestart();
+          }
         },
         onStatus: (status) {
           debugPrint('[VoiceService] STT Status: $status');
@@ -150,11 +164,13 @@ class VoiceService {
             _isListening = false;
             // If we're in continuous mode and not processing a hotword, restart
             if (_isContinuousListening && !_hotwordDetected && !_isRestarting) {
+              debugPrint('[VoiceService] 🔄 Status changed to $status, scheduling restart...');
               _scheduleContinuousRestart();
             }
           } else if (status == 'listening') {
             _isListening = true;
             _restartAttempts = 0; // Reset on successful listen
+            debugPrint('[VoiceService] ✅ Successfully listening, reset attempts');
           }
         },
       );
@@ -258,11 +274,12 @@ class VoiceService {
   /// Check if STT is available
   bool get isSttAvailable => _sttInitialized && _stt.isAvailable;
 
-  /// Start listening for speech
+  /// Start listening for speech with automatic retry on transient errors
   Future<void> startListening({
     required Function(String text) onResult,
     Function(String error)? onError,
     Duration? listenFor,
+    int maxRetries = 3,
   }) async {
     debugPrint('[VoiceService] startListening called');
 
@@ -276,7 +293,7 @@ class VoiceService {
       _continuousRestartTimer?.cancel();
       if (_stt.isListening) {
         await _stt.stop();
-        await Future.delayed(const Duration(milliseconds: 200));
+        await Future.delayed(const Duration(milliseconds: 150));
       }
     }
 
@@ -291,9 +308,8 @@ class VoiceService {
     // Wait for any ongoing TTS to complete
     if (_isSpeaking) {
       debugPrint('[VoiceService] Waiting for TTS to complete before listening...');
-      await Future.delayed(const Duration(milliseconds: 500));
       int waitCount = 0;
-      while (_isSpeaking && waitCount < 20) {
+      while (_isSpeaking && waitCount < 15) {
         await Future.delayed(const Duration(milliseconds: 100));
         waitCount++;
       }
@@ -301,55 +317,144 @@ class VoiceService {
 
     if (_isListening) {
       await stopListening();
+      await Future.delayed(const Duration(milliseconds: 100));
     }
 
-    _isListening = true;
+    // Retry logic for transient errors
+    int retryCount = 0;
+    bool resultReceived = false;
+    
+    while (retryCount <= maxRetries && !resultReceived) {
+      _isListening = true;
+      _lastSttError = null;
+      
+      // Create new completer for this attempt
+      _listenCompleter = Completer<String>();
 
-    try {
-      if (kIsWeb) {
-        onError?.call('Speech recognition not available on web');
-        _isListening = false;
-        return;
-      }
-      await _stt.listen(
-        onResult: (SpeechRecognitionResult result) {
-          if (result.finalResult) {
-            onResult(result.recognizedWords);
+      try {
+        if (kIsWeb) {
+          onError?.call('Speech recognition not available on web');
+          _isListening = false;
+          _listenCompleter = null;
+          return;
+        }
+        
+        debugPrint('[VoiceService] 🎤 Starting listen attempt ${retryCount + 1}/${maxRetries + 1}');
+        
+        await _stt.listen(
+          onResult: (SpeechRecognitionResult result) {
+            if (result.finalResult && !resultReceived && _listenCompleter != null && !_listenCompleter!.isCompleted) {
+              resultReceived = true;
+              final text = result.recognizedWords;
+              debugPrint('[VoiceService] ✅ Got result: "$text"');
+              _listenCompleter!.complete(text);
+            }
+          },
+          onSoundLevelChange: (level) {
+            _audioLevelController.add(level);
+          },
+          listenFor: listenFor ?? const Duration(seconds: 15),
+          pauseFor: const Duration(seconds: 3),
+          listenOptions: SpeechListenOptions(
+            partialResults: false,
+            cancelOnError: true,
+          ),
+        );
+
+        // Wait for result with timeout
+        final timeout = (listenFor ?? const Duration(seconds: 15)) + const Duration(seconds: 2);
+        
+        try {
+          final text = await _listenCompleter!.future.timeout(
+            timeout,
+            onTimeout: () {
+              debugPrint('[VoiceService] ⏱️ Listen timeout');
+              throw TimeoutException('Listen timeout');
+            },
+          );
+          
+          // Success!
+          _isListening = false;
+          _listenCompleter = null;
+          onResult(text);
+          resultReceived = true;
+          
+          // Resume hotword listening if it was active before
+          if (wasHotwordListening) {
+            Future.delayed(const Duration(milliseconds: 400), () {
+              if (!_isContinuousListening && _onHotwordDetected != null) {
+                debugPrint('[VoiceService] Auto-resuming hotword listening');
+                resumeHotwordListening();
+              }
+            });
+          }
+          
+          break; // Exit retry loop
+          
+        } on TimeoutException {
+          debugPrint('[VoiceService] ⏱️ Timeout waiting for result');
+          // Will retry below
+        } catch (errorMsg) {
+          // Error from error handler
+          debugPrint('[VoiceService] ❌ Error during listen: $errorMsg');
+          
+          // Check if it's a transient error we should retry
+          final shouldRetry = errorMsg == 'error_busy' || 
+                             errorMsg == 'error_no_match' || 
+                             errorMsg == 'error_speech_timeout';
+          
+          if (!shouldRetry) {
+            // Non-transient error, give up
+            debugPrint('[VoiceService] ❌ Non-transient error, not retrying');
             _isListening = false;
+            _listenCompleter = null;
+            onError?.call(errorMsg.toString());
             
-            // Resume hotword listening if it was active before
             if (wasHotwordListening) {
-              Future.delayed(const Duration(milliseconds: 500), () {
+              Future.delayed(const Duration(milliseconds: 400), () {
                 if (!_isContinuousListening && _onHotwordDetected != null) {
-                  debugPrint('[VoiceService] Auto-resuming hotword listening');
                   resumeHotwordListening();
                 }
               });
             }
+            return;
           }
-        },
-        onSoundLevelChange: (level) {
-          _audioLevelController.add(level);
-        },
-        listenFor: listenFor ?? const Duration(seconds: 15),
-        pauseFor: const Duration(seconds: 3),
-        listenOptions: SpeechListenOptions(
-          partialResults: false,
-          cancelOnError: true,
-        ),
-      );
-    } catch (e) {
+        }
+
+      } catch (e) {
+        debugPrint('[VoiceService] ❌ Exception during listen: $e');
+      }
+
       _isListening = false;
-      onError?.call('Failed to start listening');
-      
-      // Resume hotword listening even on error
-      if (wasHotwordListening) {
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (!_isContinuousListening && _onHotwordDetected != null) {
-            debugPrint('[VoiceService] Auto-resuming hotword listening after error');
-            resumeHotwordListening();
-          }
-        });
+      _listenCompleter = null;
+
+      // Check if we should retry
+      if (!resultReceived && retryCount < maxRetries) {
+        retryCount++;
+        // Much faster retry - 300ms, 400ms, 500ms
+        final delay = Duration(milliseconds: 300 + (retryCount * 100));
+        debugPrint('[VoiceService] 🔄 Retrying in ${delay.inMilliseconds}ms (attempt ${retryCount + 1}/${maxRetries + 1})');
+        await Future.delayed(delay);
+        
+        // Ensure STT is stopped before retry
+        if (_stt.isListening) {
+          await _stt.stop();
+          await Future.delayed(const Duration(milliseconds: 100));
+        }
+      } else if (!resultReceived) {
+        // Max retries reached
+        debugPrint('[VoiceService] ❌ Max retries reached');
+        onError?.call('No speech detected after $maxRetries attempts');
+        
+        // Resume hotword listening even on final error
+        if (wasHotwordListening) {
+          Future.delayed(const Duration(milliseconds: 400), () {
+            if (!_isContinuousListening && _onHotwordDetected != null) {
+              debugPrint('[VoiceService] Auto-resuming hotword listening after max retries');
+              resumeHotwordListening();
+            }
+          });
+        }
       }
     }
   }
@@ -406,6 +511,8 @@ class VoiceService {
     _isSpeaking = false;
     _ttsCompleter?.complete();
     _ttsCompleter = null;
+    _listenCompleter?.completeError('Disposed');
+    _listenCompleter = null;
     _audioLevelController.close();
   }
 
@@ -432,25 +539,25 @@ class VoiceService {
       }
     }
 
-    // Cap restart attempts to prevent infinite loops, but keep it running
+    // Keep continuous listening persistent - reset counter periodically
     if (_restartAttempts >= _maxRestartAttempts) {
       debugPrint(
-        '[VoiceService] ⚠️ Max restart attempts reached, resetting counter...',
+        '[VoiceService] ⚠️ Max restart attempts reached, resetting counter to maintain continuous listening...',
       );
-      _restartAttempts = 0; // Reset to keep continuous listening going
+      _restartAttempts = 5; // Reset to mid-range instead of 0 to maintain some backoff
     }
 
     _restartAttempts++;
 
-    // Use shorter delays for more responsive continuous listening (like Google Assistant)
-    // 800ms, 1s, 1.2s, 1.5s, 2s (capped) - much faster than before
-    final baseDelay = 800; // Start with 800ms instead of 1500ms
-    final multiplier = 1 + (_restartAttempts * 0.2).clamp(0.0, 1.5);
-    final delayMs = (baseDelay * multiplier).clamp(800, 2000).toInt();
+    // More aggressive restart strategy for better responsiveness
+    // 600ms, 800ms, 1s, 1.2s, 1.5s, 1.8s (capped at 2s)
+    final baseDelay = 600; // Start with 600ms for faster recovery
+    final multiplier = 1 + (_restartAttempts * 0.15).clamp(0.0, 2.0);
+    final delayMs = (baseDelay * multiplier).clamp(600, 2000).toInt();
     final delay = Duration(milliseconds: delayMs);
 
     debugPrint(
-      '[VoiceService] 🔄 Scheduling restart in ${delay.inMilliseconds}ms (attempt $_restartAttempts)',
+      '[VoiceService] 🔄 Scheduling restart in ${delay.inMilliseconds}ms (attempt $_restartAttempts/$_maxRestartAttempts)',
     );
 
     _continuousRestartTimer = Timer(delay, () async {
@@ -461,7 +568,7 @@ class VoiceService {
         // Ensure STT is fully stopped before restarting
         if (_stt.isListening) {
           await _stt.stop();
-          await Future.delayed(const Duration(milliseconds: 200));
+          await Future.delayed(const Duration(milliseconds: 150));
         }
 
         await _startContinuousListenCycle();
