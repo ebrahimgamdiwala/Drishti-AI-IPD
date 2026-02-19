@@ -743,4 +743,27 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get confirmLogout => 'நீங்கள் நிச்சயமாக வெளியேற விரும்புகிறீர்களா?';
+
+  @override
+  String relationshipCaptured(String relationship) {
+    return 'உறவு $relationship என அமைக்கப்பட்டது';
+  }
+
+  @override
+  String confirmSave(String name, String relationship) {
+    return 'சேமிக்க தயார். பெயர்: $name, உறவு: $relationship. உறுதிப்படுத்த \'சேமி\' என்று சொல்லுங்கள், அல்லது திரும்பிச் செல்ல \'ரத்து செய்\' என்று சொல்லுங்கள்.';
+  }
+
+  @override
+  String relativeSaved(String name, String relationship) {
+    return '$name உங்கள் $relationship ஆக வெற்றிகரமாகச் சேர்க்கப்பட்டார்';
+  }
+
+  @override
+  String get cameraReady =>
+      'கேமரா தயாராக உள்ளது. படம் எடுக்க \'படம் எடு\' என்று சொல்லுங்கள், கேமரா மாற்ற \'கேமரா மாற்று\' என்று சொல்லுங்கள், அல்லது ரத்து செய்ய \'தவிர்\' என்று சொல்லுங்கள்.';
+
+  @override
+  String get photoRequired =>
+      'உறவினரை சேமிக்க ஒரு புகைப்படம் தேவை. தயவுசெய்து ஒரு புகைப்படம் எடுங்கள்.';
 }

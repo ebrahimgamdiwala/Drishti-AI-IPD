@@ -53,6 +53,9 @@ class AudioFeedbackEngine {
   AudioFeedbackEngine({required VoiceService voiceService})
     : _voiceService = voiceService;
 
+  /// Current two-letter language code of the TTS engine (e.g. 'hi', 'en').
+  String get currentLanguageCode => _voiceService.currentLanguageCode;
+
   /// Speak a message (queued based on priority)
   ///
   /// Messages are queued and processed according to their priority level.
@@ -130,11 +133,64 @@ class AudioFeedbackEngine {
     await speak(error, priority: AudioPriority.high);
   }
 
-  /// Announce navigation to a destination
+  /// Announce navigation to a destination in the current TTS language.
   ///
-  /// Formats: "Navigating to [destination]"
+  /// Uses [VoiceService.currentLanguageCode] to pick the correct phrase.
   Future<void> announceNavigation(String destination) async {
-    await speak('Navigating to $destination');
+    final lang = _voiceService.currentLanguageCode;
+    // Localized screen names
+    const screenNames = <String, Map<String, String>>{
+      'home': {'hi': 'होम', 'ta': 'முகப்பு', 'te': 'హోమ్', 'bn': 'হোম'},
+      'settings': {
+        'hi': 'सेटिंग्स',
+        'ta': 'அமைப்புகள்',
+        'te': 'సెట్టింగ్లు',
+        'bn': 'সেটিংস',
+      },
+      'relatives': {
+        'hi': 'परिचित',
+        'ta': 'உறவினர்கள்',
+        'te': 'బంధువులు',
+        'bn': 'স্বজন',
+      },
+      'dashboard': {
+        'hi': 'डैशबोर्ड',
+        'ta': 'டாஷ்போர்ட்',
+        'te': 'డాష్బోర్డ్',
+        'bn': 'ড্যাশবোর্ড',
+      },
+      'profile': {
+        'hi': 'प्रोफ़ाइल',
+        'ta': 'சுயவிவரம்',
+        'te': 'ప్రొఫైల్',
+        'bn': 'প্রোফাইল',
+      },
+      'vision': {
+        'hi': 'दृष्टि',
+        'ta': 'பார்வை',
+        'te': 'దృష్టి',
+        'bn': 'দৃষ্টি',
+      },
+      'activity': {
+        'hi': 'गतिविधि',
+        'ta': 'செயல்பாடு',
+        'te': 'కార్యకలాపం',
+        'bn': 'কার্যকলাপ',
+      },
+    };
+    final key = destination.toLowerCase();
+    final localizedName = screenNames[key]?[lang] ?? destination;
+    const phrases = <String, String>{
+      'hi': '{name} खुल रहा है',
+      'ta': '{name} திரை திறக்கிறது',
+      'te': '{name} స్క్రీన్ తెరుచుకుంటోంది',
+      'bn': '{name} স্ক্রিন খুলছে',
+    };
+    final template = phrases[lang];
+    final text = template != null
+        ? template.replaceAll('{name}', localizedName)
+        : 'Navigating to $destination';
+    await speak(text);
   }
 
   /// Format a vision response according to guidelines

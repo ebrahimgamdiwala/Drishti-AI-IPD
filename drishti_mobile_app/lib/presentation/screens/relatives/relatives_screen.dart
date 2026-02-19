@@ -13,10 +13,13 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/api_endpoints.dart';
 import '../../../data/models/relative_model.dart';
 import '../../../data/repositories/relatives_repository.dart';
+import 'package:provider/provider.dart';
 import '../../../data/services/voice_service.dart';
+import '../../../data/providers/voice_navigation_provider.dart';
 import '../../widgets/cards/person_card.dart';
 import '../../widgets/inputs/custom_text_field.dart';
 import '../../widgets/buttons/gradient_button.dart';
+import 'voice_relative_flow_screen.dart';
 
 class RelativesScreen extends StatefulWidget {
   const RelativesScreen({super.key});
@@ -59,17 +62,43 @@ class _RelativesScreenState extends State<RelativesScreen> {
   }
 
   Future<void> _addRelative() async {
-    final result = await showModalBottomSheet<RelativeModel>(
+    // Show choice: manual form or voice-guided flow
+    await showModalBottomSheet<void>(
       context: context,
-      isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => const AddRelativeSheet(),
+      builder: (ctx) => _AddMethodSheet(
+        onManual: () async {
+          Navigator.pop(ctx);
+          final result = await showModalBottomSheet<RelativeModel>(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => const AddRelativeSheet(),
+          );
+          if (result != null) {
+            _loadRelatives();
+            _voiceService.speak('${result.name} added successfully.');
+          }
+        },
+        onVoice: () async {
+          Navigator.pop(ctx);
+          final result = await Navigator.of(context).push<RelativeModel>(
+            MaterialPageRoute(
+              builder: (_) => const VoiceRelativeFlowScreen(),
+              fullscreenDialog: true,
+            ),
+          );
+          // Resume global hotword listening regardless of outcome
+          if (mounted) {
+            context.read<VoiceNavigationProvider>().resumeHotwordListening();
+          }
+          if (result != null) {
+            _loadRelatives();
+            _voiceService.speak('${result.name} added successfully.');
+          }
+        },
+      ),
     );
-
-    if (result != null) {
-      _loadRelatives(); // Reload to get updated list
-      _voiceService.speak('${result.name} added successfully.');
-    }
   }
 
   Future<void> _editRelative(RelativeModel relative) async {
@@ -148,96 +177,97 @@ class _RelativesScreenState extends State<RelativesScreen> {
           builder: (context) {
             final l10n = AppLocalizations.of(context)!;
             return Column(
-          children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      l10n.relatives,
-                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primaryBlue,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () {},
-                    icon: const Icon(Icons.search),
-                    tooltip: 'Search',
-                  ),
-                  IconButton(
-                    onPressed: () {},
-                    icon: const Icon(Icons.filter_list),
-                    tooltip: 'Filter',
-                  ),
-                ],
-              ).animate().fadeIn(duration: 300.ms),
-            ),
-
-            // Sort options
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  Text(
-                    'Sort By',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(width: 12),
-                  _SortChip(
-                    label: 'A→Z',
-                    isSelected: _sortBy == 'name',
-                    onTap: () => _sortRelatives('name'),
-                  ),
-                  _SortChip(
-                    label: 'Recent',
-                    isSelected: _sortBy == 'recent',
-                    onTap: () => _sortRelatives('recent'),
-                  ),
-                  _SortChip(
-                    label: 'Relation',
-                    isSelected: _sortBy == 'relationship',
-                    onTap: () => _sortRelatives('relationship'),
-                  ),
-                ],
-              ),
-            ).animate().fadeIn(delay: 100.ms, duration: 300.ms),
-
-            const SizedBox(height: 16),
-
-            // List
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _relatives.isEmpty
-                  ? _buildEmptyState()
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      itemCount: _relatives.length,
-                      itemBuilder: (context, index) {
-                        final relative = _relatives[index];
-                        return PersonCard(
-                              relative: relative,
-                              onTap: () => _editRelative(relative),
-                              onEdit: () => _editRelative(relative),
-                              onDelete: () => _deleteRelative(relative),
-                            )
-                            .animate()
-                            .fadeIn(
-                              delay: Duration(
-                                milliseconds: 200 + (index * 100),
+              children: [
+                // Header
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          l10n.relatives,
+                          style: Theme.of(context).textTheme.displaySmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primaryBlue,
                               ),
-                              duration: 300.ms,
-                            )
-                            .slideX(begin: 0.1, end: 0);
-                      },
-                    ),
-            ),
-          ],
-        );
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () {},
+                        icon: const Icon(Icons.search),
+                        tooltip: 'Search',
+                      ),
+                      IconButton(
+                        onPressed: () {},
+                        icon: const Icon(Icons.filter_list),
+                        tooltip: 'Filter',
+                      ),
+                    ],
+                  ).animate().fadeIn(duration: 300.ms),
+                ),
+
+                // Sort options
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Sort By',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      const SizedBox(width: 12),
+                      _SortChip(
+                        label: 'A→Z',
+                        isSelected: _sortBy == 'name',
+                        onTap: () => _sortRelatives('name'),
+                      ),
+                      _SortChip(
+                        label: 'Recent',
+                        isSelected: _sortBy == 'recent',
+                        onTap: () => _sortRelatives('recent'),
+                      ),
+                      _SortChip(
+                        label: 'Relation',
+                        isSelected: _sortBy == 'relationship',
+                        onTap: () => _sortRelatives('relationship'),
+                      ),
+                    ],
+                  ),
+                ).animate().fadeIn(delay: 100.ms, duration: 300.ms),
+
+                const SizedBox(height: 16),
+
+                // List
+                Expanded(
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _relatives.isEmpty
+                      ? _buildEmptyState()
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          itemCount: _relatives.length,
+                          itemBuilder: (context, index) {
+                            final relative = _relatives[index];
+                            return PersonCard(
+                                  relative: relative,
+                                  onTap: () => _editRelative(relative),
+                                  onEdit: () => _editRelative(relative),
+                                  onDelete: () => _deleteRelative(relative),
+                                )
+                                .animate()
+                                .fadeIn(
+                                  delay: Duration(
+                                    milliseconds: 200 + (index * 100),
+                                  ),
+                                  duration: 300.ms,
+                                )
+                                .slideX(begin: 0.1, end: 0);
+                          },
+                        ),
+                ),
+              ],
+            );
           },
         ),
       ),
@@ -648,6 +678,133 @@ class _AddRelativeSheetState extends State<AddRelativeSheet> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Bottom sheet that lets the user choose between manual and voice-guided add
+class _AddMethodSheet extends StatelessWidget {
+  final VoidCallback onManual;
+  final VoidCallback onVoice;
+
+  const _AddMethodSheet({required this.onManual, required this.onVoice});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkCard : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 12),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Add Relative',
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Choose how you want to add',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+          ),
+          const SizedBox(height: 24),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _MethodTile(
+                    icon: Icons.edit_outlined,
+                    label: 'Manual',
+                    subtitle: 'Fill in the form',
+                    color: AppColors.primaryBlue,
+                    onTap: onManual,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _MethodTile(
+                    icon: Icons.mic,
+                    label: 'Voice',
+                    subtitle: 'Hands-free guided',
+                    color: Colors.deepPurple,
+                    onTap: onVoice,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+}
+
+class _MethodTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _MethodTile({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 36, color: color),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+                color: color,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -129,6 +129,11 @@ class VoiceNavigationController extends ChangeNotifier {
     await _voiceService.stopHotwordListening();
   }
 
+  /// Resume hotword listening (e.g. after returning from a sub-screen)
+  Future<void> resumeHotwordListening() async {
+    await _voiceService.resumeHotwordListening();
+  }
+
   /// Handle microphone state changes from MicrophoneController
   void _onMicrophoneStateChanged() {
     _updateState(_state.copyWith(microphoneState: _micController.state));
@@ -216,11 +221,13 @@ class VoiceNavigationController extends ChangeNotifier {
 
     // Check for stop listening command first
     final normalized = command.toLowerCase().trim();
-    if (normalized.contains('stop listening') || 
+    if (normalized.contains('stop listening') ||
         (normalized.contains('stop') && normalized.contains('listening'))) {
       debugPrint('[VoiceNav] Stop listening command received');
       await _voiceService.stopHotwordListening();
-      await _audioFeedback.speak('Voice control stopped. Tap the microphone to start again.');
+      await _audioFeedback.speak(
+        'Voice control stopped. Tap the microphone to start again.',
+      );
       await _micController.setIdle();
       _updateState(_state.copyWith(isProcessing: false));
       return;
@@ -656,7 +663,10 @@ class VoiceNavigationController extends ChangeNotifier {
   }
 
   /// Handle feature action from voice command executor
-  Future<void> _onFeatureAction(FeatureAction action, Map<String, dynamic> params) async {
+  Future<void> _onFeatureAction(
+    FeatureAction action,
+    Map<String, dynamic> params,
+  ) async {
     debugPrint('[VoiceNav] Feature action: $action with params: $params');
 
     switch (action) {
@@ -721,7 +731,9 @@ class VoiceNavigationController extends ChangeNotifier {
         final stopListening = params['stopListening'] as bool? ?? false;
         if (stopListening) {
           await _voiceService.stopHotwordListening();
-          await _audioFeedback.speak('Voice control stopped. Tap the microphone to start again.');
+          await _audioFeedback.speak(
+            'Voice control stopped. Tap the microphone to start again.',
+          );
         } else {
           _voiceService.stopSpeaking();
         }
@@ -766,22 +778,26 @@ class VoiceNavigationController extends ChangeNotifier {
     }
 
     // Navigate to full-screen hands-free flow
-    Navigator.of(context).push(
-      MaterialPageRoute<dynamic>(
-        builder: (context) => const VoiceRelativeFlowScreen(),
-        fullscreenDialog: true,
-      ),
-    ).then((result) {
-      if (result != null) {
-        debugPrint('[VoiceNav] Relative added via hands-free flow: $result');
-        // Resume hotword listening after flow completes
-        _voiceService.resumeHotwordListening();
-      } else {
-        debugPrint('[VoiceNav] Hands-free flow cancelled');
-        // Resume hotword listening even if cancelled
-        _voiceService.resumeHotwordListening();
-      }
-    });
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute<dynamic>(
+            builder: (context) => const VoiceRelativeFlowScreen(),
+            fullscreenDialog: true,
+          ),
+        )
+        .then((result) {
+          if (result != null) {
+            debugPrint(
+              '[VoiceNav] Relative added via hands-free flow: $result',
+            );
+            // Resume hotword listening after flow completes
+            _voiceService.resumeHotwordListening();
+          } else {
+            debugPrint('[VoiceNav] Hands-free flow cancelled');
+            // Resume hotword listening even if cancelled
+            _voiceService.resumeHotwordListening();
+          }
+        });
   }
 
   /// Change app language

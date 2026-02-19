@@ -247,5 +247,27 @@
   "normal": "Normal",
   "fast": "Fast",
   "veryFast": "Very Fast",
-  "confirmLogout": "Are you sure you want to logout?"
+  "confirmLogout": "Are you sure you want to logout?",
+  "relationshipCaptured": "Relationship set to {relationship}.",
+  "@relationshipCaptured": {
+    "placeholders": {
+      "relationship": {"type": "String"}
+    }
+  },
+  "confirmSave": "Ready to add. Name: {name}, Relationship: {relationship}. Say done or yes to confirm, or cancel to discard.",
+  "@confirmSave": {
+    "placeholders": {
+      "name": {"type": "String"},
+      "relationship": {"type": "String"}
+    }
+  },
+  "relativeSaved": "{name} has been added successfully as your {relationship}.",
+  "@relativeSaved": {
+    "placeholders": {
+      "name": {"type": "String"},
+      "relationship": {"type": "String"}
+    }
+  },
+  "cameraReady": "Camera is ready. Say take photo to capture, switch camera to flip, or skip to cancel.",
+  "photoRequired": "A photo is required to save the relative. Please take a photo."
 }

@@ -77,6 +77,11 @@ class VoiceNavigationProvider extends ChangeNotifier {
     await _controller.stopHotwordListening();
   }
 
+  /// Resume hotword listening (e.g. after returning from a sub-screen)
+  Future<void> resumeHotwordListening() async {
+    await _controller.resumeHotwordListening();
+  }
+
   /// Initialize the voice navigation system
   Future<void> initialize() async {
     if (_isInitialized) return;

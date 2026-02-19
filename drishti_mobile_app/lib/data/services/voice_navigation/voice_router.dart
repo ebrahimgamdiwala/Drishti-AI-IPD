@@ -145,10 +145,10 @@ class VoiceRouter {
     try {
       // Clear any pending audio feedback from previous screen
       _audioFeedback.clearQueue();
-      
+
       // Stop any currently speaking audio
       await _audioFeedback.stopSpeaking();
-      
+
       // Get the friendly screen name for announcement
       final screenName =
           VoiceRoutes.routeToScreenName[routeName] ??
@@ -212,18 +212,34 @@ class VoiceRouter {
     try {
       // Clear any pending audio feedback from previous screen
       _audioFeedback.clearQueue();
-      
+
       // Stop any currently speaking audio
       await _audioFeedback.stopSpeaking();
-      
+
       // Check if we can go back
       // ignore: use_build_context_synchronously
       if (Navigator.of(context).canPop()) {
-        await _audioFeedback.speak('Going back');
+        final goBackText =
+            const {
+              'hi': 'वापस जा रहे हैं',
+              'ta': 'பின்னால் செல்கிறோம்',
+              'te': 'వెనక్కి వెళ్తున్నాం',
+              'bn': 'পিছনে যাচ্ছি',
+            }[_audioFeedback.currentLanguageCode] ??
+            'Going back';
+        await _audioFeedback.speak(goBackText);
         // ignore: use_build_context_synchronously
         Navigator.of(context).pop();
       } else {
-        await _audioFeedback.speak('Already at the first screen');
+        final firstScreenText =
+            const {
+              'hi': 'आप पहले स्क्रीन पर हैं',
+              'ta': 'நீங்கள் முதல் திரையில் இருக்கிறீர்கள்',
+              'te': 'మీరు మొదటి స్క్రీన్‌లో ఉన్నారు',
+              'bn': 'আপনি প্রথম স্ক্রিনে আছেন',
+            }[_audioFeedback.currentLanguageCode] ??
+            'Already at the first screen';
+        await _audioFeedback.speak(firstScreenText);
       }
     } catch (e) {
       await _audioFeedback.reportError('Could not go back. Please try again.');
@@ -248,10 +264,10 @@ class VoiceRouter {
     try {
       // Clear any pending audio feedback from previous screen
       _audioFeedback.clearQueue();
-      
+
       // Stop any currently speaking audio
       await _audioFeedback.stopSpeaking();
-      
+
       await _audioFeedback.announceNavigation('Home');
 
       // Navigate to home, replacing the current route

@@ -737,5 +737,28 @@ class AppLocalizationsTe extends AppLocalizations {
   String get veryFast => 'చాలా వేగంగా';
 
   @override
-  String get confirmLogout => 'మీరు ఖచ్చితంగా లాగ్అవుట్ చేయాలనుకుంటున్నారా?';
+  String get confirmLogout => 'మీరు నిజంగా లాగ్అవుట్ చేయాలనుకుంటున్నారా?';
+
+  @override
+  String relationshipCaptured(String relationship) {
+    return 'సంబంధం $relationshipగా సెట్ చేయబడింది';
+  }
+
+  @override
+  String confirmSave(String name, String relationship) {
+    return 'సేవ్ చేయడానికి సిద్ధంగా ఉంది. పేరు: $name, సంబంధం: $relationship. నిర్ధారించడానికి \'సేవ్ చేయండి\' అని చెప్పండి, లేదా వెనక్కి వెళ్లడానికి \'రద్దు చేయండి\' అని చెప్పండి.';
+  }
+
+  @override
+  String relativeSaved(String name, String relationship) {
+    return '$name మీ $relationshipగా విజయవంతంగా జోడించబడింది';
+  }
+
+  @override
+  String get cameraReady =>
+      'కెమెరా సిద్ధంగా ఉంది. ఫోటో తీయడానికి \'ఫోటో తీయండి\' అని చెప్పండి, కెమెరా మార్చడానికి \'కెమెరా మార్చండి\' అని చెప్పండి, లేదా రద్దు చేయడానికి \'దాటవేయండి\' అని చెప్పండి.';
+
+  @override
+  String get photoRequired =>
+      'బంధువును సేవ్ చేయడానికి ఒక ఫోటో అవసరం. దయచేసి ఒక ఫోటో తీయండి.';
 }

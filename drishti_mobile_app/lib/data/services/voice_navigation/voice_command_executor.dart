@@ -164,12 +164,29 @@ class VoiceCommandConfig {
     'toggle theme': FeatureAction.toggleTheme,
     'switch theme': FeatureAction.toggleTheme,
     'change theme': FeatureAction.toggleTheme,
+    // Whisper phonetic / near-miss variants for theme
+    'theme': FeatureAction.toggleTheme,
+    'team': FeatureAction.toggleTheme,
+    'team theme': FeatureAction.toggleTheme,
+    'change team': FeatureAction.toggleTheme,
+    'inge team': FeatureAction.toggleTheme,
+    'in team': FeatureAction.toggleTheme,
+    'the theme': FeatureAction.toggleTheme,
+    'changing theme': FeatureAction.toggleTheme,
+    'change the theme': FeatureAction.toggleTheme,
+    'switch the theme': FeatureAction.toggleTheme,
+    'toggle the theme': FeatureAction.toggleTheme,
     'dark mode': FeatureAction.darkMode,
     'enable dark mode': FeatureAction.darkMode,
     'turn on dark mode': FeatureAction.darkMode,
+    'set dark mode': FeatureAction.darkMode,
+    'go dark': FeatureAction.darkMode,
+    'dark': FeatureAction.darkMode,
     'light mode': FeatureAction.lightMode,
     'enable light mode': FeatureAction.lightMode,
     'turn on light mode': FeatureAction.lightMode,
+    'set light mode': FeatureAction.lightMode,
+    'go light': FeatureAction.lightMode,
 
     // Language commands
     'change language': FeatureAction.changeLanguage,
@@ -258,6 +275,9 @@ class VoiceCommandConfig {
     'open connected users': FeatureAction.goConnectedUsers,
     'add connected user': FeatureAction.addConnectedUser,
 
+    // Standalone word alias — Whisper sometimes drops the trailing 's'
+    'relative': FeatureAction.goRelatives,
+
     // Navigation commands
     'go home': FeatureAction.goHome,
     'home': FeatureAction.goHome,
@@ -312,10 +332,42 @@ class VoiceCommandConfig {
     'what did you say': FeatureAction.repeat,
   };
 
-  /// Get feature action from command
+  /// Get feature action from command.
+  ///
+  /// Matching order:
+  /// 1. Exact match (fastest, most specific)
+  /// 2. Command CONTAINS a known key — handles extra words / filler around a key
+  /// 3. A known key CONTAINS the command — handles single-word results from Whisper
   static FeatureAction getActionFromCommand(String command) {
     final normalized = command.toLowerCase().trim();
-    return commandMap[normalized] ?? FeatureAction.unknown;
+
+    // 1. Exact match
+    final exact = commandMap[normalized];
+    if (exact != null) return exact;
+
+    // 2. normalized contains a key — prefer the longest matching key
+    FeatureAction? containsMatch;
+    int longestContainedKey = 0;
+    for (final entry in commandMap.entries) {
+      if (normalized.contains(entry.key) &&
+          entry.key.length > longestContainedKey) {
+        containsMatch = entry.value;
+        longestContainedKey = entry.key.length;
+      }
+    }
+    if (containsMatch != null) return containsMatch;
+
+    // 3. A key contains normalized — e.g. "relative" matches "add relative"
+    //    Guard: require at least 4 chars to avoid accidental collisions
+    if (normalized.length >= 4) {
+      for (final entry in commandMap.entries) {
+        if (entry.key.contains(normalized)) {
+          return entry.value;
+        }
+      }
+    }
+
+    return FeatureAction.unknown;
   }
 
   /// Get all available commands
@@ -329,7 +381,8 @@ class VoiceCommandExecutor {
   final AudioFeedbackEngine _audioFeedback;
 
   // Callbacks for various features
-  final Future<void> Function(FeatureAction, Map<String, dynamic>)? _onFeatureAction;
+  final Future<void> Function(FeatureAction, Map<String, dynamic>)?
+  _onFeatureAction;
   final Function(String route)? _onNavigate;
 
   VoiceCommandExecutor({
@@ -544,7 +597,10 @@ class VoiceCommandExecutor {
   // Relatives implementations
   Future<void> _executeAddRelative() async {
     // Trigger the hands-free voice-guided add relative flow
-    await _onFeatureAction?.call(FeatureAction.addRelative, {'voiceGuided': true, 'handsFree': true});
+    await _onFeatureAction?.call(FeatureAction.addRelative, {
+      'voiceGuided': true,
+      'handsFree': true,
+    });
     // Don't speak here - the flow will handle all audio feedback
   }
 
@@ -614,10 +670,10 @@ class VoiceCommandExecutor {
 
     if (languageCode != null) {
       // Change language directly
-      await _onFeatureAction?.call(
-        FeatureAction.changeLanguage,
-        {'languageCode': languageCode, 'languageName': languageName},
-      );
+      await _onFeatureAction?.call(FeatureAction.changeLanguage, {
+        'languageCode': languageCode,
+        'languageName': languageName,
+      });
       await _audioFeedback.speak('Changing language to $languageName');
     } else {
       // No specific language mentioned, open settings
@@ -627,7 +683,6 @@ class VoiceCommandExecutor {
   }
 
   String? _lastCommand;
-
 
   // Activity implementations
   Future<void> _executeViewActivity() async {
@@ -715,17 +770,23 @@ class VoiceCommandExecutor {
 
   // Speech speed implementations
   Future<void> _executeSpeechFaster() async {
-    await _onFeatureAction?.call(FeatureAction.speechFaster, {'direction': 'faster'});
+    await _onFeatureAction?.call(FeatureAction.speechFaster, {
+      'direction': 'faster',
+    });
     await _audioFeedback.speak('Speaking faster now');
   }
 
   Future<void> _executeSpeechSlower() async {
-    await _onFeatureAction?.call(FeatureAction.speechSlower, {'direction': 'slower'});
+    await _onFeatureAction?.call(FeatureAction.speechSlower, {
+      'direction': 'slower',
+    });
     await _audioFeedback.speak('Speaking slower now');
   }
 
   Future<void> _executeSpeechNormal() async {
-    await _onFeatureAction?.call(FeatureAction.speechNormal, {'direction': 'normal'});
+    await _onFeatureAction?.call(FeatureAction.speechNormal, {
+      'direction': 'normal',
+    });
     await _audioFeedback.speak('Speech speed reset to normal');
   }
 

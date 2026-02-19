@@ -37,7 +37,8 @@ dependencies:
   local_auth_darwin: ^1.4.1
   
   # Accessibility & Voice
-  speech_to_text: ^7.3.0
+  sherpa_onnx: ^1.10.0
+  record: ^6.0.0
   flutter_tts: ^4.2.5
   
   # Internationalization
@@ -47,6 +48,7 @@ dependencies:
   
   # Camera & Images
   image_picker: ^1.0.7
+  camera: ^0.10.6
   
   # Animations
   flutter_animate: ^4.5.0

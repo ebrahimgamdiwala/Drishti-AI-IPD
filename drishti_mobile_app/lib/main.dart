@@ -18,6 +18,7 @@ import 'data/providers/voice_navigation_provider.dart';
 import 'data/providers/locale_provider.dart';
 import 'data/services/storage_service.dart';
 import 'data/services/voice_service.dart';
+import 'data/services/sherpa_stt_service.dart';
 import 'routes/app_routes.dart';
 
 void main() async {
@@ -30,8 +31,11 @@ void main() async {
   // Initialize storage service
   await StorageService().init();
 
-  // Initialize voice service
+  // Initialize voice service (TTS)
   await VoiceService().initTts();
+
+  // Initialize Sherpa-ONNX STT (checks for models, doesn't block if not downloaded)
+  await SherpaSTTService().initialize();
 
   // Set preferred orientations
   await SystemChrome.setPreferredOrientations([
@@ -96,10 +100,14 @@ class DrishtiApp extends StatelessWidget {
                         context.read<ThemeProvider>().setTheme(ThemeType.light);
                         break;
                       case 'system':
-                        context.read<ThemeProvider>().setTheme(ThemeType.system);
+                        context.read<ThemeProvider>().setTheme(
+                          ThemeType.system,
+                        );
                         break;
                       default:
-                        debugPrint('[DrishtiApp] Unknown theme type: $themeType');
+                        debugPrint(
+                          '[DrishtiApp] Unknown theme type: $themeType',
+                        );
                     }
                   },
                 ),
@@ -111,7 +119,7 @@ class DrishtiApp extends StatelessWidget {
                   title: 'Drishti',
                   debugShowCheckedModeBanner: false,
                   navigatorKey: navigatorKey,
-                  
+
                   // Localization
                   localizationsDelegates: const [
                     AppLocalizations.delegate,
@@ -127,12 +135,12 @@ class DrishtiApp extends StatelessWidget {
                     Locale('bn', ''), // Bengali
                   ],
                   locale: localeProvider.locale,
-                  
+
                   // Theme
                   theme: themeProvider.themeData,
                   darkTheme: themeProvider.themeData,
                   themeMode: ThemeMode.system,
-                  
+
                   // Routes
                   initialRoute: AppRoutes.splash,
                   onGenerateRoute: AppRoutes.generateRoute,

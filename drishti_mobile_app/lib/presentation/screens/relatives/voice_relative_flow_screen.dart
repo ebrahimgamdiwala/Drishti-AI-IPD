@@ -10,13 +10,16 @@ import '../../../core/constants/app_colors.dart';
 import '../../../data/services/voice_service.dart';
 import '../../../data/services/voice_navigation/voice_relative_flow.dart';
 import '../../../data/repositories/relatives_repository.dart';
+import '../../../generated/l10n/app_localizations.dart';
 import '../../widgets/glass_card.dart';
+import 'voice_camera_screen.dart';
 
 class VoiceRelativeFlowScreen extends StatefulWidget {
   const VoiceRelativeFlowScreen({super.key});
 
   @override
-  State<VoiceRelativeFlowScreen> createState() => _VoiceRelativeFlowScreenState();
+  State<VoiceRelativeFlowScreen> createState() =>
+      _VoiceRelativeFlowScreenState();
 }
 
 class _VoiceRelativeFlowScreenState extends State<VoiceRelativeFlowScreen> {
@@ -32,13 +35,35 @@ class _VoiceRelativeFlowScreenState extends State<VoiceRelativeFlowScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeFlow();
+    // Defer to first frame so AppLocalizations.of(context) is available
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _initializeFlow();
+    });
   }
 
   void _initializeFlow() {
+    final l10n = AppLocalizations.of(context);
+    final strings = l10n != null
+        ? VoiceRelativeFlowStrings.fromL10n(l10n)
+        : null; // falls back to English defaults inside VoiceRelativeFlow
+
     _flow = VoiceRelativeFlow(
       voiceService: VoiceService(),
       repository: RelativesRepository(),
+      strings: strings,
+      onOpenCamera: () async {
+        if (!mounted) return null;
+        return await Navigator.push<File?>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => VoiceCameraScreen(
+              instruction:
+                  strings?.cameraInstruction ??
+                  'Say "take photo" to capture, "switch camera" to flip, or "skip".',
+            ),
+          ),
+        );
+      },
       onStepChanged: (step) {
         if (mounted) {
           setState(() => _currentStep = step);
@@ -82,9 +107,9 @@ class _VoiceRelativeFlowScreenState extends State<VoiceRelativeFlowScreen> {
       Navigator.pop(context);
     } else if (result.error != null) {
       // Show error
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${result.error}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: ${result.error}')));
       Navigator.pop(context);
     }
   }
@@ -100,7 +125,9 @@ class _VoiceRelativeFlowScreenState extends State<VoiceRelativeFlowScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      backgroundColor: isDark
+          ? AppColors.darkBackground
+          : AppColors.lightBackground,
       body: SafeArea(
         child: Column(
           children: [
@@ -131,16 +158,16 @@ class _VoiceRelativeFlowScreenState extends State<VoiceRelativeFlowScreen> {
                         children: [
                           Text(
                             'Voice-Guided',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: AppColors.primaryBlue,
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(
+                                  color: AppColors.primaryBlue,
+                                  fontWeight: FontWeight.w600,
+                                ),
                           ),
                           Text(
                             'Add New Relative',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppColors.textSecondaryLight,
-                            ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: AppColors.textSecondaryLight),
                           ),
                         ],
                       ),
@@ -164,34 +191,40 @@ class _VoiceRelativeFlowScreenState extends State<VoiceRelativeFlowScreen> {
             // Step indicator with glassmorphism
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: GlassCard(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Progress',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.textSecondaryLight,
-                            fontWeight: FontWeight.w500,
-                          ),
+              child:
+                  GlassCard(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Progress',
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: AppColors.textSecondaryLight,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                ),
+                                Text(
+                                  _getStepText(),
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: AppColors.primaryBlue,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            _buildStepIndicator(),
+                          ],
                         ),
-                        Text(
-                          _getStepText(),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.primaryBlue,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    _buildStepIndicator(),
-                  ],
-                ),
-              ).animate().fadeIn(delay: 100.ms, duration: 300.ms).slideY(begin: -0.2, end: 0),
+                      )
+                      .animate()
+                      .fadeIn(delay: 100.ms, duration: 300.ms)
+                      .slideY(begin: -0.2, end: 0),
             ),
 
             const SizedBox(height: 20),
@@ -200,93 +233,102 @@ class _VoiceRelativeFlowScreenState extends State<VoiceRelativeFlowScreen> {
             if (_isListening)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: GlassCard(
-                  padding: const EdgeInsets.all(20),
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColors.primaryBlue.withValues(alpha: 0.1),
-                      AppColors.primaryBlue.withValues(alpha: 0.05),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          gradient: AppColors.primaryGradient,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primaryBlue.withValues(alpha: 0.3),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.mic,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      )
-                          .animate(onPlay: (controller) => controller.repeat())
-                          .scale(
-                            duration: 1500.ms,
-                            begin: const Offset(1, 1),
-                            end: const Offset(1.1, 1.1),
-                            curve: Curves.easeInOut,
-                          )
-                          .then()
-                          .scale(
-                            duration: 1500.ms,
-                            begin: const Offset(1.1, 1.1),
-                            end: const Offset(1, 1),
-                            curve: Curves.easeInOut,
+                child:
+                    GlassCard(
+                          padding: const EdgeInsets.all(20),
+                          gradient: LinearGradient(
+                            colors: [
+                              AppColors.primaryBlue.withValues(alpha: 0.1),
+                              AppColors.primaryBlue.withValues(alpha: 0.05),
+                            ],
                           ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Listening...',
-                              style: TextStyle(
-                                color: AppColors.primaryBlue,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
+                          child: Row(
+                            children: [
+                              Container(
+                                    width: 48,
+                                    height: 48,
+                                    decoration: BoxDecoration(
+                                      gradient: AppColors.primaryGradient,
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: AppColors.primaryBlue
+                                              .withValues(alpha: 0.3),
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
+                                    child: const Icon(
+                                      Icons.mic,
+                                      color: Colors.white,
+                                      size: 24,
+                                    ),
+                                  )
+                                  .animate(
+                                    onPlay: (controller) => controller.repeat(),
+                                  )
+                                  .scale(
+                                    duration: 1500.ms,
+                                    begin: const Offset(1, 1),
+                                    end: const Offset(1.1, 1.1),
+                                    curve: Curves.easeInOut,
+                                  )
+                                  .then()
+                                  .scale(
+                                    duration: 1500.ms,
+                                    begin: const Offset(1.1, 1.1),
+                                    end: const Offset(1, 1),
+                                    curve: Curves.easeInOut,
+                                  ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Listening...',
+                                      style: TextStyle(
+                                        color: AppColors.primaryBlue,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      _getListeningHint(),
+                                      style: TextStyle(
+                                        color: AppColors.textSecondaryLight,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _getListeningHint(),
-                              style: TextStyle(
-                                color: AppColors.textSecondaryLight,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // Animated pulse indicator
-                      Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryBlue,
-                          shape: BoxShape.circle,
-                        ),
-                      )
-                          .animate(onPlay: (controller) => controller.repeat())
-                          .fadeOut(duration: 1000.ms)
-                          .scale(
-                            duration: 1000.ms,
-                            begin: const Offset(1, 1),
-                            end: const Offset(1.8, 1.8),
+                              // Animated pulse indicator
+                              Container(
+                                    width: 12,
+                                    height: 12,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primaryBlue,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  )
+                                  .animate(
+                                    onPlay: (controller) => controller.repeat(),
+                                  )
+                                  .fadeOut(duration: 1000.ms)
+                                  .scale(
+                                    duration: 1000.ms,
+                                    begin: const Offset(1, 1),
+                                    end: const Offset(1.8, 1.8),
+                                  ),
+                            ],
                           ),
-                    ],
-                  ),
-                ).animate().fadeIn(duration: 300.ms).slideY(begin: -0.2, end: 0),
+                        )
+                        .animate()
+                        .fadeIn(duration: 300.ms)
+                        .slideY(begin: -0.2, end: 0),
               ),
 
             const SizedBox(height: 20),
@@ -299,23 +341,29 @@ class _VoiceRelativeFlowScreenState extends State<VoiceRelativeFlowScreen> {
                   children: [
                     // Photo preview with glassmorphism
                     GlassCard(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        children: [
-                          _buildPhotoPreview(),
-                          const SizedBox(height: 16),
-                          Text(
-                            _photo != null ? 'Photo Captured' : 'No Photo Yet',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: _photo != null
-                                  ? AppColors.primaryBlue
-                                  : AppColors.textSecondaryLight,
-                              fontWeight: FontWeight.w500,
-                            ),
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            children: [
+                              _buildPhotoPreview(),
+                              const SizedBox(height: 16),
+                              Text(
+                                _photo != null
+                                    ? 'Photo Captured'
+                                    : 'No Photo Yet',
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(
+                                      color: _photo != null
+                                          ? AppColors.primaryBlue
+                                          : AppColors.textSecondaryLight,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ).animate().fadeIn(delay: 200.ms, duration: 300.ms).scale(begin: const Offset(0.9, 0.9)),
+                        )
+                        .animate()
+                        .fadeIn(delay: 200.ms, duration: 300.ms)
+                        .scale(begin: const Offset(0.9, 0.9)),
 
                     const SizedBox(height: 16),
 
@@ -327,38 +375,43 @@ class _VoiceRelativeFlowScreenState extends State<VoiceRelativeFlowScreen> {
                     // Status message
                     if (_isProcessing)
                       GlassCard(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          children: [
-                            Container(
-                              width: 56,
-                              height: 56,
-                              decoration: BoxDecoration(
-                                gradient: AppColors.primaryGradient,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Center(
-                                child: SizedBox(
-                                  width: 28,
-                                  height: 28,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 3,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              children: [
+                                Container(
+                                  width: 56,
+                                  height: 56,
+                                  decoration: BoxDecoration(
+                                    gradient: AppColors.primaryGradient,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Center(
+                                    child: SizedBox(
+                                      width: 28,
+                                      height: 28,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 3,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  _getStatusMessage(),
+                                  style: Theme.of(context).textTheme.bodyLarge
+                                      ?.copyWith(fontWeight: FontWeight.w500),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 16),
-                            Text(
-                              _getStatusMessage(),
-                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                fontWeight: FontWeight.w500,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ).animate().fadeIn(duration: 300.ms).scale(begin: const Offset(0.9, 0.9)),
+                          )
+                          .animate()
+                          .fadeIn(duration: 300.ms)
+                          .scale(begin: const Offset(0.9, 0.9)),
 
                     const SizedBox(height: 20),
                   ],
@@ -369,36 +422,40 @@ class _VoiceRelativeFlowScreenState extends State<VoiceRelativeFlowScreen> {
             // Cancel button with glassmorphism
             Padding(
               padding: const EdgeInsets.all(20),
-              child: GlassCard(
-                padding: EdgeInsets.zero,
-                onTap: () {
-                  _flow.cancel();
-                  Navigator.pop(context);
-                },
-                child: Container(
-                  height: 56,
-                  alignment: Alignment.center,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.close_rounded,
-                        color: AppColors.textSecondaryLight,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Cancel',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondaryLight,
+              child:
+                  GlassCard(
+                        padding: EdgeInsets.zero,
+                        onTap: () {
+                          _flow.cancel();
+                          Navigator.pop(context);
+                        },
+                        child: Container(
+                          height: 56,
+                          alignment: Alignment.center,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.close_rounded,
+                                color: AppColors.textSecondaryLight,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Cancel',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textSecondaryLight,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-              ).animate().fadeIn(delay: 300.ms, duration: 300.ms).slideY(begin: 0.2, end: 0),
+                      )
+                      .animate()
+                      .fadeIn(delay: 300.ms, duration: 300.ms)
+                      .slideY(begin: 0.2, end: 0),
             ),
           ],
         ),
@@ -519,8 +576,10 @@ class _VoiceRelativeFlowScreenState extends State<VoiceRelativeFlowScreen> {
   Widget _buildDataPreview() {
     return Column(
       children: [
-        if (_name.isNotEmpty) _buildDataField('Name', _name, Icons.person_outline),
-        if (_name.isNotEmpty && _relationship.isNotEmpty) const SizedBox(height: 12),
+        if (_name.isNotEmpty)
+          _buildDataField('Name', _name, Icons.person_outline),
+        if (_name.isNotEmpty && _relationship.isNotEmpty)
+          const SizedBox(height: 12),
         if (_relationship.isNotEmpty)
           _buildDataField('Relationship', _relationship, Icons.family_restroom),
         if (_notes != null && _notes!.isNotEmpty) ...[
@@ -543,11 +602,7 @@ class _VoiceRelativeFlowScreenState extends State<VoiceRelativeFlowScreen> {
               gradient: AppColors.primaryGradient,
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              icon,
-              color: Colors.white,
-              size: 20,
-            ),
+            child: Icon(icon, color: Colors.white, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -574,11 +629,7 @@ class _VoiceRelativeFlowScreenState extends State<VoiceRelativeFlowScreen> {
               ],
             ),
           ),
-          Icon(
-            Icons.check_circle,
-            color: AppColors.primaryBlue,
-            size: 20,
-          ),
+          Icon(Icons.check_circle, color: AppColors.primaryBlue, size: 20),
         ],
       ),
     ).animate().fadeIn(duration: 300.ms).slideX(begin: 0.2, end: 0);

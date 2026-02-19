@@ -20,6 +20,7 @@ import 'about_screen.dart';
 import 'favorites_screen.dart';
 import 'emergency_contacts_screen.dart';
 import 'connected_users_screen.dart';
+import '../../widgets/voice_navigation/speech_model_card.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -69,7 +70,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 24),
 
               // Profile section
-              _buildProfileCard(user?.name ?? l10n.user, user?.email ?? '', l10n)
+              _buildProfileCard(
+                    user?.name ?? l10n.user,
+                    user?.email ?? '',
+                    l10n,
+                  )
                   .animate()
                   .fadeIn(delay: 100.ms, duration: 300.ms)
                   .slideY(begin: 0.1, end: 0),
@@ -162,6 +167,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                 ),
               ]).animate().fadeIn(delay: 300.ms, duration: 300.ms),
+
+              const SizedBox(height: 12),
+              const SpeechModelCard().animate().fadeIn(
+                delay: 350.ms,
+                duration: 300.ms,
+              ),
 
               const SizedBox(height: 24),
 
@@ -644,7 +655,6 @@ class _SettingTile extends StatelessWidget {
     );
   }
 }
-
 
 // Language Selector Widget
 class _LanguageSelector extends StatelessWidget {

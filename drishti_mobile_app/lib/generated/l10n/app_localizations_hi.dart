@@ -734,4 +734,27 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get confirmLogout => 'क्या आप वाकई लॉगआउट करना चाहते हैं?';
+
+  @override
+  String relationshipCaptured(String relationship) {
+    return 'रिश्ता $relationship पर सेट किया गया';
+  }
+
+  @override
+  String confirmSave(String name, String relationship) {
+    return 'जोड़ने के लिए तैयार। नाम: $name, रिश्ता: $relationship। पुष्टि के लिए \'हाँ\' या \'ठीक है\' कहें, या रद्द करने के लिए \'रद्द करें\' कहें।';
+  }
+
+  @override
+  String relativeSaved(String name, String relationship) {
+    return '$name को आपके $relationship के रूप में सफलतापूर्वक जोड़ा गया है';
+  }
+
+  @override
+  String get cameraReady =>
+      'कैमरा तैयार है। फोटो लेने के लिए \'फोटो लें\' कहें, कैमरा बदलने के लिए \'कैमरा स्विच करें\' कहें, या रद्द करने के लिए \'छोड़ें\' कहें।';
+
+  @override
+  String get photoRequired =>
+      'रिश्तेदार को सहेजने के लिए एक फोटो आवश्यक है। कृपया एक फोटो लें।';
 }

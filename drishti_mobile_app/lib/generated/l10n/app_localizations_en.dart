@@ -733,4 +733,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get confirmLogout => 'Are you sure you want to logout?';
+
+  @override
+  String relationshipCaptured(String relationship) {
+    return 'Relationship set to $relationship.';
+  }
+
+  @override
+  String confirmSave(String name, String relationship) {
+    return 'Ready to add. Name: $name, Relationship: $relationship. Say done or yes to confirm, or cancel to discard.';
+  }
+
+  @override
+  String relativeSaved(String name, String relationship) {
+    return '$name has been added successfully as your $relationship.';
+  }
+
+  @override
+  String get cameraReady =>
+      'Camera is ready. Say take photo to capture, switch camera to flip, or skip to cancel.';
+
+  @override
+  String get photoRequired =>
+      'A photo is required to save the relative. Please take a photo.';
 }

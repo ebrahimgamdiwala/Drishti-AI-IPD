@@ -1531,6 +1531,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Are you sure you want to logout?'**
   String get confirmLogout;
+
+  /// No description provided for @relationshipCaptured.
+  ///
+  /// In en, this message translates to:
+  /// **'Relationship set to {relationship}.'**
+  String relationshipCaptured(String relationship);
+
+  /// No description provided for @confirmSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to add. Name: {name}, Relationship: {relationship}. Say done or yes to confirm, or cancel to discard.'**
+  String confirmSave(String name, String relationship);
+
+  /// No description provided for @relativeSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} has been added successfully as your {relationship}.'**
+  String relativeSaved(String name, String relationship);
+
+  /// No description provided for @cameraReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera is ready. Say take photo to capture, switch camera to flip, or skip to cancel.'**
+  String get cameraReady;
+
+  /// No description provided for @photoRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'A photo is required to save the relative. Please take a photo.'**
+  String get photoRequired;
 }
 
 class _AppLocalizationsDelegate

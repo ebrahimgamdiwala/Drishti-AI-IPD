@@ -6,10 +6,75 @@ library;
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:image_picker/image_picker.dart';
 import '../voice_service.dart';
 import '../../repositories/relatives_repository.dart';
 import '../../models/relative_model.dart';
+import '../../../generated/l10n/app_localizations.dart';
+
+/// All TTS strings used in the voice flow — build from [AppLocalizations]
+/// via [VoiceRelativeFlowStrings.fromL10n] for language-aware speech.
+class VoiceRelativeFlowStrings {
+  final String welcome;
+  final String askName;
+  final String Function(String name) gotName;
+  final String askRelationship;
+  final String Function(String relationship) gotRelationship;
+  final String askPhoto;
+  final String askNotes;
+  final String noNotes;
+  final String gotNotes;
+  final String photoTaken;
+  final String skipPhoto;
+  final String Function(String name, String relationship) confirmPrompt;
+  final String saving;
+  final String Function(String name, String relationship) saved;
+  final String cancelled;
+  final String cameraInstruction;
+  final String photoRequired;
+
+  VoiceRelativeFlowStrings({
+    required this.welcome,
+    required this.askName,
+    required this.gotName,
+    required this.askRelationship,
+    required this.gotRelationship,
+    required this.askPhoto,
+    required this.askNotes,
+    required this.noNotes,
+    required this.gotNotes,
+    required this.photoTaken,
+    required this.skipPhoto,
+    required this.confirmPrompt,
+    required this.saving,
+    required this.saved,
+    required this.cancelled,
+    required this.cameraInstruction,
+    required this.photoRequired,
+  });
+
+  /// Build from [AppLocalizations] — automatically uses the current app language.
+  factory VoiceRelativeFlowStrings.fromL10n(AppLocalizations l10n) {
+    return VoiceRelativeFlowStrings(
+      welcome: l10n.addRelativePrompt,
+      askName: l10n.speakName,
+      gotName: (name) => l10n.nameCaptured(name),
+      askRelationship: l10n.speakRelationship,
+      gotRelationship: (rel) => l10n.relationshipCaptured(rel),
+      askPhoto: l10n.takePhotoPrompt,
+      askNotes: l10n.speakNotes,
+      noNotes: l10n.noNotesAdded,
+      gotNotes: l10n.notesAdded,
+      photoTaken: l10n.photoTaken,
+      skipPhoto: l10n.skippingPhoto,
+      confirmPrompt: (name, rel) => l10n.confirmSave(name, rel),
+      saving: l10n.savingRelative,
+      saved: (name, rel) => l10n.relativeSaved(name, rel),
+      cancelled: l10n.cancelled,
+      cameraInstruction: l10n.cameraReady,
+      photoRequired: l10n.photoRequired,
+    );
+  }
+}
 
 /// Steps in the voice-guided relative addition flow
 enum VoiceRelativeStep {
@@ -42,7 +107,13 @@ class VoiceRelativeFlowResult {
 class VoiceRelativeFlow {
   final VoiceService _voiceService;
   final RelativesRepository _repository;
-  final ImagePicker _picker = ImagePicker();
+
+  /// Optional localized strings — defaults to English if null
+  final VoiceRelativeFlowStrings? _strings;
+
+  /// Callback to open a voice-controlled camera; returns the captured [File].
+  /// If null, falls back to a simple error message (no image_picker).
+  final Future<File?> Function()? onOpenCamera;
 
   // Flow state
   VoiceRelativeStep _currentStep = VoiceRelativeStep.welcome;
@@ -56,16 +127,53 @@ class VoiceRelativeFlow {
   // Callbacks
   final void Function(VoiceRelativeStep step)? onStepChanged;
   final void Function(bool isListening)? onListeningChanged;
-  final void Function(String name, String relationship, File? photo, String? notes)? onDataChanged;
+  final void Function(
+    String name,
+    String relationship,
+    File? photo,
+    String? notes,
+  )?
+  onDataChanged;
 
   VoiceRelativeFlow({
     required VoiceService voiceService,
     required RelativesRepository repository,
+    VoiceRelativeFlowStrings? strings,
+    this.onOpenCamera,
     this.onStepChanged,
     this.onListeningChanged,
     this.onDataChanged,
-  })  : _voiceService = voiceService,
-        _repository = repository;
+  }) : _voiceService = voiceService,
+       _repository = repository,
+       _strings = strings;
+
+  // Convenience getter — falls back to English defaults
+  VoiceRelativeFlowStrings get _s => _strings ?? _englishDefaults;
+
+  static final _englishDefaults = VoiceRelativeFlowStrings(
+    welcome: "Let's add a new relative. Say cancel to stop at any time.",
+    askName: "What is the person's name?",
+    gotName: (name) => 'Got it. Name is $name.',
+    askRelationship:
+        'What is their relationship to you? For example, mother, father, friend.',
+    gotRelationship: (rel) => 'Relationship set to $rel.',
+    askPhoto:
+        'Now let\'s take a photo. Say take photo to open the camera, or skip.',
+    askNotes:
+        'Would you like to add any notes? Say notes, or say skip to continue.',
+    noNotes: 'No notes added.',
+    gotNotes: 'Notes added.',
+    photoTaken: 'Photo captured successfully.',
+    skipPhoto: 'Skipping photo. You can add it later.',
+    confirmPrompt: (name, rel) =>
+        'Ready to add. Name: $name, Relationship: $rel. Say done or yes to confirm, or cancel to discard.',
+    saving: 'Saving relative information.',
+    saved: (name, rel) => '$name has been added successfully as your $rel.',
+    cancelled: 'Cancelled.',
+    cameraInstruction:
+        'Camera ready. Say take photo to capture, switch camera to flip, or skip.',
+    photoRequired: 'A photo is required. Please take a photo.',
+  );
 
   /// Start the voice-guided flow
   Future<VoiceRelativeFlowResult> start() async {
@@ -75,10 +183,7 @@ class VoiceRelativeFlow {
       _notifyStepChanged();
 
       // Welcome message
-      await _voiceService.speak(
-        'Let\'s add a new relative. I\'ll guide you through each step. '
-        'You can say "skip" to skip optional fields, or "cancel" to stop at any time.',
-      );
+      await _voiceService.speak(_s.welcome);
 
       // Start the flow
       await _promptForName();
@@ -117,14 +222,10 @@ class VoiceRelativeFlow {
       if (relative != null) {
         _currentStep = VoiceRelativeStep.complete;
         _notifyStepChanged();
-        await _voiceService.speak(
-          '$_name has been added successfully as your $_relationship.',
-        );
+        await _voiceService.speak(_s.saved(_name!, _relationship!));
         return VoiceRelativeFlowResult(relative: relative);
       } else {
-        return const VoiceRelativeFlowResult(
-          error: 'Failed to save relative',
-        );
+        return const VoiceRelativeFlowResult(error: 'Failed to save relative');
       }
     } catch (e) {
       debugPrint('[VoiceRelativeFlow] Error: $e');
@@ -139,17 +240,17 @@ class VoiceRelativeFlow {
     _currentStep = VoiceRelativeStep.name;
     _notifyStepChanged();
 
-    await _voiceService.speak('What is the person\'s name?');
+    await _voiceService.speak(_s.askName);
 
     final result = await _listenForInput(
       validator: (text) => text.isNotEmpty,
-      errorMessage: 'I didn\'t catch the name. Please say the name again.',
+      errorMessage: _s.askName,
     );
 
     if (result != null) {
       _name = _capitalizeWords(result);
       _notifyDataChanged();
-      await _voiceService.speak('Got it. Name is $_name.');
+      await _voiceService.speak(_s.gotName(_name!));
     }
   }
 
@@ -160,19 +261,17 @@ class VoiceRelativeFlow {
     _currentStep = VoiceRelativeStep.relationship;
     _notifyStepChanged();
 
-    await _voiceService.speak(
-      'What is their relationship to you? For example, mother, father, friend, or sibling.',
-    );
+    await _voiceService.speak(_s.askRelationship);
 
     final result = await _listenForInput(
       validator: (text) => text.isNotEmpty,
-      errorMessage: 'I didn\'t catch the relationship. Please say it again.',
+      errorMessage: _s.askRelationship,
     );
 
     if (result != null) {
       _relationship = _capitalizeWords(result);
       _notifyDataChanged();
-      await _voiceService.speak('Relationship set to $_relationship.');
+      await _voiceService.speak(_s.gotRelationship(_relationship!));
     }
   }
 
@@ -183,9 +282,7 @@ class VoiceRelativeFlow {
     _currentStep = VoiceRelativeStep.photo;
     _notifyStepChanged();
 
-    await _voiceService.speak(
-      'Now let\'s take a photo. Say "take photo" to open the camera, or "skip" if you want to add it later.',
-    );
+    await _voiceService.speak(_s.askPhoto);
 
     bool photoTaken = false;
     int attempts = 0;
@@ -198,9 +295,12 @@ class VoiceRelativeFlow {
           return normalized.contains('take') ||
               normalized.contains('photo') ||
               normalized.contains('camera') ||
+              normalized.contains('capture') ||
+              normalized.contains('click') ||
+              normalized.contains('snap') ||
               normalized.contains('skip');
         },
-        errorMessage: 'Please say "take photo" to capture an image, or "skip" to continue without a photo.',
+        errorMessage: _s.askPhoto,
       );
 
       if (result == null) break;
@@ -208,34 +308,26 @@ class VoiceRelativeFlow {
       final normalized = result.toLowerCase().trim();
 
       if (normalized.contains('skip')) {
-        await _voiceService.speak('Skipping photo. You can add it later.');
+        await _voiceService.speak(_s.skipPhoto);
         photoTaken = true;
-      } else if (normalized.contains('take') ||
-          normalized.contains('photo') ||
-          normalized.contains('camera')) {
-        await _voiceService.speak('Opening camera now.');
-        
+      } else {
+        // Open voice-controlled camera
         try {
-          final XFile? image = await _picker.pickImage(
-            source: ImageSource.camera,
-            maxWidth: 800,
-            maxHeight: 800,
-            imageQuality: 85,
-          );
+          final File? captured = await onOpenCamera?.call();
 
-          if (image != null) {
-            _photo = File(image.path);
+          if (captured != null) {
+            _photo = captured;
             _notifyDataChanged();
-            await _voiceService.speak('Photo captured successfully.');
+            await _voiceService.speak(_s.photoTaken);
             photoTaken = true;
           } else {
             attempts++;
             if (attempts < maxAttempts) {
               await _voiceService.speak(
-                'No photo taken. Say "take photo" to try again, or "skip" to continue.',
+                'No photo taken. Say take photo to try again, or skip.',
               );
             } else {
-              await _voiceService.speak('Skipping photo for now.');
+              await _voiceService.speak(_s.skipPhoto);
               photoTaken = true;
             }
           }
@@ -244,10 +336,10 @@ class VoiceRelativeFlow {
           attempts++;
           if (attempts < maxAttempts) {
             await _voiceService.speak(
-              'Camera error. Say "take photo" to try again, or "skip" to continue.',
+              'Camera error. Say take photo to try again, or skip.',
             );
           } else {
-            await _voiceService.speak('Skipping photo due to camera issues.');
+            await _voiceService.speak(_s.skipPhoto);
             photoTaken = true;
           }
         }
@@ -262,23 +354,21 @@ class VoiceRelativeFlow {
     _currentStep = VoiceRelativeStep.notes;
     _notifyStepChanged();
 
-    await _voiceService.speak(
-      'Would you like to add any notes? Say the notes, or say "skip" to continue.',
-    );
+    await _voiceService.speak(_s.askNotes);
 
     final result = await _listenForInput(
       validator: (text) => true, // Notes are optional
-      errorMessage: 'I didn\'t catch that. Say your notes, or "skip" to continue.',
+      errorMessage: _s.askNotes,
     );
 
     if (result != null) {
       final normalized = result.toLowerCase().trim();
       if (normalized.contains('skip') || normalized.contains('no')) {
-        await _voiceService.speak('No notes added.');
+        await _voiceService.speak(_s.noNotes);
       } else {
         _notes = result;
         _notifyDataChanged();
-        await _voiceService.speak('Notes added.');
+        await _voiceService.speak(_s.gotNotes);
       }
     }
   }
@@ -290,13 +380,7 @@ class VoiceRelativeFlow {
     _currentStep = VoiceRelativeStep.confirm;
     _notifyStepChanged();
 
-    final photoStatus = _photo != null ? 'with photo' : 'without photo';
-    final notesStatus = _notes != null && _notes!.isNotEmpty ? 'with notes' : '';
-    
-    await _voiceService.speak(
-      'Ready to save. Name: $_name, Relationship: $_relationship, $photoStatus $notesStatus. '
-      'Say "save" to confirm, or "cancel" to discard.',
-    );
+    await _voiceService.speak(_s.confirmPrompt(_name!, _relationship!));
 
     bool confirmed = false;
     int attempts = 0;
@@ -306,26 +390,48 @@ class VoiceRelativeFlow {
       final result = await _listenForInput(
         validator: (text) {
           final normalized = text.toLowerCase().trim();
-          return normalized.contains('save') ||
-              normalized.contains('confirm') ||
+          // Accept any affirmative or negative word — validator is intentionally
+          // wide so Whisper mis-transcriptions don't block the flow.
+          return normalized.contains('done') ||
+              normalized.contains('do') ||
+              normalized.contains('don') ||
               normalized.contains('yes') ||
+              normalized.contains('yeah') ||
+              normalized.contains('yep') ||
+              normalized.contains('ok') ||
+              normalized.contains('okay') ||
+              normalized.contains('confirm') ||
+              normalized.contains('save') ||
               normalized.contains('cancel') ||
               normalized.contains('no');
         },
-        errorMessage: 'Please say "save" to confirm, or "cancel" to discard.',
+        errorMessage: 'Say done or yes to confirm, or cancel to discard.',
       );
 
       if (result == null) break;
 
       final normalized = result.toLowerCase().trim();
 
-      if (normalized.contains('save') ||
+      // Accept a wide range of Whisper transcriptions for "done" / "yes"
+      if (normalized.contains('done') ||
+          normalized.contains('do') ||
+          normalized.contains('don') ||
+          normalized.contains('yes') ||
+          normalized.contains('yeah') ||
+          normalized.contains('yep') ||
+          normalized.contains('yup') ||
+          normalized.contains('ok') ||
+          normalized.contains('okay') ||
           normalized.contains('confirm') ||
-          normalized.contains('yes')) {
+          normalized.contains('save') ||
+          normalized.contains('siv') ||
+          normalized.contains('sav') ||
+          normalized.contains('safe') ||
+          normalized == 's') {
         confirmed = true;
       } else if (normalized.contains('cancel') || normalized.contains('no')) {
         _isCancelled = true;
-        await _voiceService.speak('Cancelled. Relative not saved.');
+        await _voiceService.speak(_s.cancelled);
         return;
       } else {
         attempts++;
@@ -333,7 +439,7 @@ class VoiceRelativeFlow {
     }
 
     if (!confirmed && !_isCancelled) {
-      await _voiceService.speak('No confirmation received. Cancelling.');
+      await _voiceService.speak(_s.cancelled);
       _isCancelled = true;
     }
   }
@@ -347,17 +453,11 @@ class VoiceRelativeFlow {
     _currentStep = VoiceRelativeStep.saving;
     _notifyStepChanged();
 
-    await _voiceService.speak('Saving relative information.');
+    await _voiceService.speak(_s.saving);
 
     try {
-      // If no photo, we need to handle this case
-      // For now, we'll require a photo or use a placeholder
       if (_photo == null) {
-        // Create a temporary placeholder or skip photo requirement
-        // For this implementation, we'll return null if no photo
-        await _voiceService.speak(
-          'A photo is required to save the relative. Please try again with a photo.',
-        );
+        await _voiceService.speak(_s.photoRequired);
         return null;
       }
 
@@ -386,11 +486,17 @@ class VoiceRelativeFlow {
 
     while (attempts < maxAttempts && !_isCancelled) {
       final completer = Completer<String?>();
-      
+
       _isListening = true;
       _notifyListeningChanged();
 
+      // Brief pause so any TTS audio has cleared the mic before recording starts
+      await Future.delayed(const Duration(milliseconds: 450));
+
       await _voiceService.startListening(
+        // Never auto-resume hotword between flow steps — the explicit
+        // resumeHotwordListening() call in relatives_screen handles restart.
+        autoResumeHotword: false,
         onResult: (text) {
           _isListening = false;
           _notifyListeningChanged();
@@ -403,7 +509,8 @@ class VoiceRelativeFlow {
           // Check for cancel command
           final normalized = text.toLowerCase().trim();
           if (normalized.contains('cancel') ||
-              (normalized.contains('stop') && normalized.contains('listening'))) {
+              (normalized.contains('stop') &&
+                  normalized.contains('listening'))) {
             _isCancelled = true;
             completer.complete(null);
             return;
@@ -427,7 +534,7 @@ class VoiceRelativeFlow {
       final result = await completer.future;
 
       if (_isCancelled) {
-        await _voiceService.speak('Cancelled.');
+        await _voiceService.speak(_s.cancelled);
         return null;
       }
 
@@ -442,7 +549,7 @@ class VoiceRelativeFlow {
     }
 
     if (!_isCancelled) {
-      await _voiceService.speak('Too many attempts. Cancelling.');
+      await _voiceService.speak(_s.cancelled);
       _isCancelled = true;
     }
 
@@ -451,10 +558,13 @@ class VoiceRelativeFlow {
 
   /// Capitalize first letter of each word
   String _capitalizeWords(String text) {
-    return text.split(' ').map((word) {
-      if (word.isEmpty) return word;
-      return word[0].toUpperCase() + word.substring(1).toLowerCase();
-    }).join(' ');
+    return text
+        .split(' ')
+        .map((word) {
+          if (word.isEmpty) return word;
+          return word[0].toUpperCase() + word.substring(1).toLowerCase();
+        })
+        .join(' ');
   }
 
   /// Notify step changed
