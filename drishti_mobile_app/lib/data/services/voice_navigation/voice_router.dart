@@ -33,6 +33,9 @@ class VoiceRoutes {
   /// Activity screen route
   static const String activity = AppRoutes.activity;
 
+  /// Emergency Contacts screen route
+  static const String emergencyContacts = AppRoutes.emergencyContacts;
+
   /// Vision/VLM screen route (if exists)
   static const String vision = '/vision';
 
@@ -50,6 +53,9 @@ class VoiceRoutes {
     'family': relatives,
     'activity': activity,
     'history': activity,
+    'emergency': emergencyContacts,
+    'emergency contacts': emergencyContacts,
+    'emergency contact': emergencyContacts,
     'vision': vision,
     'camera': vision,
     'auth': auth,
@@ -65,6 +71,7 @@ class VoiceRoutes {
     profile: 'Profile',
     relatives: 'Relatives',
     activity: 'Activity',
+    emergencyContacts: 'Emergency Contacts',
     vision: 'Vision',
     auth: 'Authentication',
   };

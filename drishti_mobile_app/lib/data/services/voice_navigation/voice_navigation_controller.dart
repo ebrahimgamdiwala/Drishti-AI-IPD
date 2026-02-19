@@ -7,7 +7,9 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../models/voice_navigation/voice_navigation_models.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../voice_service.dart';
 import '../local_vlm_service.dart';
@@ -372,15 +374,8 @@ class VoiceNavigationController extends ChangeNotifier {
     // Announce emergency mode activation immediately
     await _audioFeedback.speakImmediate('Emergency mode activated');
 
-    // TODO: Implement emergency handler (Task 13)
-    // - Attempt to call emergency contact
-    // - Override current screen with emergency UI
-    // - Send location data if available
-
-    // For now, just provide feedback
-    await _audioFeedback.speakImmediate(
-      'Emergency contact calling not yet implemented. Please configure emergency contact in settings.',
-    );
+    // Attempt to call the first emergency contact with a phone number
+    await _handleCallEmergencyContact();
 
     // Reset emergency mode after handling
     await Future.delayed(const Duration(seconds: 3));
@@ -742,10 +737,46 @@ class VoiceNavigationController extends ChangeNotifier {
         _updateState(_state.copyWith(isProcessing: false));
         break;
 
+      // Emergency
+      case FeatureAction.callEmergencyContact:
+        await _handleCallEmergencyContact();
+        break;
+
       // Default - no special handling needed
       default:
         break;
     }
+  }
+
+  /// Attempt to call the first emergency contact that has a phone number.
+  /// Falls back to navigating to the emergency contacts screen.
+  Future<void> _handleCallEmergencyContact() async {
+    final context = _navigatorKey?.currentContext;
+    if (context != null && context.mounted) {
+      try {
+        final auth = Provider.of<AuthProvider>(context, listen: false);
+        final contacts = auth.user?.emergencyContacts ?? [];
+        final contactWithPhone = contacts.firstWhere(
+          (c) => c.phone != null && c.phone!.isNotEmpty,
+          orElse: () => throw StateError('no phone'),
+        );
+        final phone = contactWithPhone.phone!.replaceAll(RegExp(r'\s+'), '');
+        final name = contactWithPhone.name ?? 'your emergency contact';
+        await _audioFeedback.speakImmediate('Calling $name');
+        final uri = Uri(scheme: 'tel', path: phone);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri);
+          return;
+        }
+      } catch (_) {
+        // No contacts or no phone — fall through to screen
+      }
+    }
+    // Navigate to the screen so the user can add / call manually
+    _voiceRouter.navigateTo('/emergency-contacts');
+    await _audioFeedback.speak(
+      'No emergency contact with a phone number found. Opening emergency contacts so you can add one.',
+    );
   }
 
   /// Show voice-guided add relative sheet

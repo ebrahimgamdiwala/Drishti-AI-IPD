@@ -523,7 +523,7 @@ class VoiceCommandExecutor {
         _onNavigate?.call('/help');
         await _audioFeedback.speak('Opening help');
       case FeatureAction.goEmergency:
-        _onNavigate?.call('/emergency');
+        _onNavigate?.call('/emergency-contacts');
         await _audioFeedback.speak('Opening emergency contacts');
       case FeatureAction.goFavorites:
         _onNavigate?.call('/favorites');
@@ -739,10 +739,8 @@ class VoiceCommandExecutor {
 
   // Emergency implementations
   Future<void> _executeCallEmergency() async {
-    await _audioFeedback.speakImmediate(
-      'EMERGENCY MODE ACTIVATED. Contacting emergency contact immediately',
-    );
-    // Actual emergency call would be implemented here
+    // Let the controller handle the actual call (it has access to AuthProvider)
+    await _onFeatureAction?.call(FeatureAction.callEmergencyContact, {});
   }
 
   Future<void> _executeSendAlert() async {
@@ -808,12 +806,12 @@ class VoiceCommandExecutor {
 
   // Emergency implementations
   Future<void> _executeViewEmergencyContacts() async {
-    _onNavigate?.call('/emergency');
+    _onNavigate?.call('/emergency-contacts');
     await _audioFeedback.speak('Showing your emergency contacts');
   }
 
   Future<void> _executeAddEmergencyContact() async {
-    _onNavigate?.call('/emergency');
+    _onNavigate?.call('/emergency-contacts');
     await _audioFeedback.speak('Opening form to add emergency contact');
     await _onFeatureAction?.call(FeatureAction.addEmergencyContact, {});
   }

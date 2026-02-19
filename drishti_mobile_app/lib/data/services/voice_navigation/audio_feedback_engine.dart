@@ -177,6 +177,12 @@ class AudioFeedbackEngine {
         'te': 'కార్యకలాపం',
         'bn': 'কার্যকলাপ',
       },
+      'emergency contacts': {
+        'hi': 'आपातकालीन संपर्क',
+        'ta': 'அவசர தொடர்புகள்',
+        'te': 'అత్యవసర పరిచయాలు',
+        'bn': 'জরুরি যোগাযোগ',
+      },
     };
     final key = destination.toLowerCase();
     final localizedName = screenNames[key]?[lang] ?? destination;
