@@ -8,6 +8,8 @@ library;
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'ai_runtime_config.dart';
+import 'google_cloud_stt_service.dart';
 import 'sherpa_stt_service.dart';
 
 class VoiceService {
@@ -17,6 +19,7 @@ class VoiceService {
 
   final FlutterTts _tts = FlutterTts();
   final SherpaSTTService _sherpa = SherpaSTTService();
+  final GoogleCloudSttService _googleCloudStt = GoogleCloudSttService();
 
   bool _ttsInitialized = false;
   bool _sttInitialized = false;
@@ -56,6 +59,7 @@ class VoiceService {
   bool get isModelsReady => _sherpa.isModelsReady;
   bool get isDownloading => _sherpa.isDownloading;
   String get modelSizeString => _sherpa.modelSizeString;
+  bool get isCloudSpeechConfigured => _googleCloudStt.isConfigured;
 
   /// Initialize TTS engine
   Future<void> initTts() async {
@@ -136,17 +140,18 @@ class VoiceService {
 
   /// Initialize STT engine (sherpa-onnx Whisper + Silero VAD)
   Future<bool> initStt() async {
-    if (_sttInitialized) return true;
+    if (_sttInitialized) return isSttAvailable;
     if (kIsWeb) return false;
 
     try {
       debugPrint('[VoiceService] Initializing Sherpa-ONNX STT...');
       final modelsReady = await _sherpa.initialize();
+      final cloudReady = _googleCloudStt.isConfigured;
 
-      if (modelsReady) {
+      if (modelsReady || cloudReady) {
         _sttInitialized = true;
         debugPrint(
-          '[VoiceService] ✅ Sherpa-ONNX STT ready (Whisper + Silero VAD)',
+          '[VoiceService] ✅ STT ready (cloud: $cloudReady, offline: $modelsReady)',
         );
         return true;
       } else {
@@ -259,7 +264,9 @@ class VoiceService {
   bool get isListening => _isListening;
 
   /// Check if STT is available
-  bool get isSttAvailable => _sttInitialized && _sherpa.isModelsReady;
+  bool get isSttAvailable =>
+      (_sttInitialized && _sherpa.isModelsReady) ||
+      _googleCloudStt.isConfigured;
 
   /// Start listening for speech — powered by Whisper + Silero VAD
   ///
@@ -290,13 +297,6 @@ class VoiceService {
       await Future.delayed(const Duration(milliseconds: 150));
     }
 
-    if (!_sherpa.isModelsReady) {
-      onError?.call(
-        'Speech models not downloaded. Please download from Settings.',
-      );
-      return;
-    }
-
     // Wait for any ongoing TTS to complete
     if (_isSpeaking) {
       debugPrint(
@@ -312,6 +312,60 @@ class VoiceService {
     }
 
     _isListening = true;
+
+    if (_googleCloudStt.isConfigured) {
+      try {
+        debugPrint('[VoiceService] ☁️ Trying Google Cloud Speech-to-Text...');
+        final cloudResult = await _googleCloudStt.recognizeSpeech(
+          languageCode: _normalizeSpeechLanguage(_currentLanguage),
+          timeout: listenFor ?? const Duration(seconds: 15),
+          initialSilenceTimeout: const Duration(seconds: 8),
+        );
+
+        _isListening = false;
+
+        if (cloudResult.isNotEmpty) {
+          debugPrint(
+            '[VoiceService] ✅ Cloud STT result: "${cloudResult.text}"',
+          );
+          onResult(cloudResult.text);
+
+          if (autoResumeHotword && wasHotwordListening) {
+            Future.delayed(const Duration(milliseconds: 400), () {
+              if (!_isContinuousListening && _onHotwordDetected != null) {
+                debugPrint('[VoiceService] Auto-resuming hotword listening');
+                resumeHotwordListening();
+              }
+            });
+          }
+          return;
+        }
+
+        debugPrint(
+          '[VoiceService] Cloud STT returned no speech, trying offline',
+        );
+      } catch (e) {
+        debugPrint('[VoiceService] Cloud STT failed, trying offline: $e');
+      }
+    }
+
+    if (!_sherpa.isModelsReady) {
+      _isListening = false;
+      onError?.call(
+        _googleCloudStt.isConfigured
+            ? 'Online speech recognition is unavailable right now, and offline models are not downloaded.'
+            : 'Speech models not downloaded. Please download from Settings.',
+      );
+
+      if (autoResumeHotword && wasHotwordListening) {
+        Future.delayed(const Duration(milliseconds: 400), () {
+          if (!_isContinuousListening && _onHotwordDetected != null) {
+            resumeHotwordListening();
+          }
+        });
+      }
+      return;
+    }
 
     try {
       debugPrint('[VoiceService] 🎤 Starting Whisper recognition...');
@@ -366,6 +420,7 @@ class VoiceService {
   Future<void> stopListening() async {
     _isListening = false;
     if (kIsWeb) return;
+    await _googleCloudStt.stopListening();
     await _sherpa.stopListening();
   }
 
@@ -373,6 +428,7 @@ class VoiceService {
   Future<void> cancelListening() async {
     _isListening = false;
     if (kIsWeb) return;
+    await _googleCloudStt.stopListening();
     await _sherpa.stopListening();
   }
 
@@ -406,6 +462,7 @@ class VoiceService {
   Future<void> dispose() async {
     if (!kIsWeb) {
       await _tts.stop();
+      await _googleCloudStt.stopListening();
       await _sherpa.stopListening();
     }
     _isContinuousListening = false;
@@ -413,6 +470,30 @@ class VoiceService {
     _ttsCompleter?.complete();
     _ttsCompleter = null;
     await _sherpa.dispose();
+  }
+
+  String _normalizeSpeechLanguage(String languageCode) {
+    final trimmed = languageCode.trim();
+    if (trimmed.isEmpty) {
+      return AIRuntimeConfig.defaultSpeechLanguage;
+    }
+
+    if (trimmed.contains('-')) {
+      return trimmed;
+    }
+
+    switch (trimmed) {
+      case 'hi':
+        return 'hi-IN';
+      case 'ta':
+        return 'ta-IN';
+      case 'te':
+        return 'te-IN';
+      case 'bn':
+        return 'bn-IN';
+      default:
+        return 'en-US';
+    }
   }
 
   // === Continuous Listening with Hotword Detection ===

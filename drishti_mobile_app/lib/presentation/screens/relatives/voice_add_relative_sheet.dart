@@ -8,7 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
-import '../../../data/models/relative_model.dart';
 import '../../../data/repositories/relatives_repository.dart';
 import '../../../data/services/voice_service.dart';
 import '../../widgets/inputs/custom_text_field.dart';

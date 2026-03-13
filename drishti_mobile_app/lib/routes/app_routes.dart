@@ -17,6 +17,7 @@ import '../presentation/screens/settings/about_screen.dart';
 import '../presentation/screens/settings/favorites_screen.dart';
 import '../presentation/screens/settings/emergency_contacts_screen.dart';
 import '../presentation/screens/settings/connected_users_screen.dart';
+import '../presentation/screens/profile/profile_screen.dart';
 
 class AppRoutes {
   AppRoutes._();
@@ -68,6 +69,9 @@ class AppRoutes {
 
       case main:
         return _fadeRoute(const MainShell(), settings);
+
+      case profile:
+        return _slideRoute(const ProfileScreen(), settings);
 
       case help:
         return _slideRoute(const HelpScreen(), settings);

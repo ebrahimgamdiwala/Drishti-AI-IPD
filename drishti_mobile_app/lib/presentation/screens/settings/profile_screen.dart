@@ -10,6 +10,10 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../data/providers/auth_provider.dart';
 import '../../../routes/app_routes.dart';
+import '../profile/profile_screen.dart' as full_profile;
+import 'favorites_screen.dart';
+import 'emergency_contacts_screen.dart';
+import 'connected_users_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -69,7 +73,16 @@ class ProfileScreen extends StatelessWidget {
                 const SizedBox(height: 20),
 
                 // Avatar
-                Stack(
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const full_profile.ProfileScreen(),
+                      ),
+                    );
+                  },
+                  child: Stack(
                       children: [
                         Container(
                           width: 120,
@@ -93,16 +106,32 @@ class ProfileScreen extends StatelessWidget {
                             ],
                           ),
                           child: ClipOval(
-                            child: Container(
-                              color: isDark
-                                  ? AppColors.darkCard
-                                  : AppColors.lightCard,
-                              child: const Icon(
-                                Icons.person,
-                                size: 60,
-                                color: AppColors.primaryBlue,
-                              ),
-                            ),
+                            child: (user?.profileImage != null &&
+                                    user!.profileImage!.isNotEmpty)
+                                ? Image.network(
+                                    user.profileImage!,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => Container(
+                                      color: isDark
+                                          ? AppColors.darkCard
+                                          : AppColors.lightCard,
+                                      child: const Icon(
+                                        Icons.person,
+                                        size: 60,
+                                        color: AppColors.primaryBlue,
+                                      ),
+                                    ),
+                                  )
+                                : Container(
+                                    color: isDark
+                                        ? AppColors.darkCard
+                                        : AppColors.lightCard,
+                                    child: const Icon(
+                                      Icons.person,
+                                      size: 60,
+                                      color: AppColors.primaryBlue,
+                                    ),
+                                  ),
                           ),
                         ),
                         Positioned(
@@ -136,6 +165,8 @@ class ProfileScreen extends StatelessWidget {
                       begin: const Offset(0.9, 0.9),
                       end: const Offset(1, 1),
                     ),
+
+                ),
 
                 const SizedBox(height: 16),
 
@@ -179,25 +210,56 @@ class ProfileScreen extends StatelessWidget {
                             _ProfileMenuItem(
                               icon: Icons.person_outline,
                               title: AppStrings.profile,
-                              onTap: () {},
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const full_profile.ProfileScreen(),
+                                  ),
+                                );
+                              },
                             ),
                             const Divider(height: 1),
                             _ProfileMenuItem(
                               icon: Icons.favorite_outline,
                               title: 'Favorites',
-                              onTap: () {},
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const FavoritesScreen(),
+                                  ),
+                                );
+                              },
                             ),
                             const Divider(height: 1),
                             _ProfileMenuItem(
                               icon: Icons.contact_emergency_outlined,
                               title: AppStrings.emergencyContacts,
-                              onTap: () {},
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const EmergencyContactsScreen(),
+                                  ),
+                                );
+                              },
                             ),
                             const Divider(height: 1),
                             _ProfileMenuItem(
                               icon: Icons.people_outline,
                               title: AppStrings.connectedUsers,
-                              onTap: () {},
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const ConnectedUsersScreen(),
+                                  ),
+                                );
+                              },
                             ),
                             const Divider(height: 1),
                             _ProfileMenuItem(

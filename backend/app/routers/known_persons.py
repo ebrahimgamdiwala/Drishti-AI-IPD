@@ -25,9 +25,30 @@ from app.services.face_service import extract_embedding_from_base64
 router = APIRouter(prefix="/api/known-persons", tags=["Known Persons"])
 
 
+def _serialize_known_person(person: KnownPerson, include_embeddings: bool = False) -> dict:
+    data = {
+        "id": str(person.id),
+        "name": person.name,
+        "relationship": person.relationship,
+        "added_by": person.added_by,
+        "for_user": person.for_user,
+        "images": [img.model_dump() for img in person.images],
+        "has_face_embeddings": len(person.face_embeddings) > 0,
+        "notes": person.notes,
+        "phone_number": person.phone_number,
+        "email": person.email,
+        "created_at": person.created_at.isoformat(),
+        "updated_at": person.updated_at.isoformat(),
+    }
+    if include_embeddings:
+        data["face_embeddings"] = person.face_embeddings
+    return data
+
+
 @router.get("")
 async def list_known_persons(
     for_user_id: Optional[str] = None,
+    include_embeddings: bool = False,
     user: User = Depends(get_current_user)
 ):
     """List known persons based on user role."""
@@ -51,20 +72,7 @@ async def list_known_persons(
     
     return {
         "knownPersons": [
-            {
-                "id": str(kp.id),
-                "name": kp.name,
-                "relationship": kp.relationship,
-                "added_by": kp.added_by,
-                "for_user": kp.for_user,
-                "images": [img.model_dump() for img in kp.images],
-                "has_face_embeddings": len(kp.face_embeddings) > 0,
-                "notes": kp.notes,
-                "phone_number": kp.phone_number,
-                "email": kp.email,
-                "created_at": kp.created_at.isoformat(),
-                "updated_at": kp.updated_at.isoformat()
-            }
+            _serialize_known_person(kp, include_embeddings=include_embeddings)
             for kp in known_persons
         ]
     }
@@ -120,20 +128,28 @@ async def get_known_person(
 async def create_known_person(
     name: str = Form(...),
     relationship: str = Form(...),
-    for_user_id: str = Form(...),
+    for_user_id: Optional[str] = Form(None),
     notes: Optional[str] = Form(None),
     phone_number: Optional[str] = Form(None),
     email: Optional[str] = Form(None),
     files: List[UploadFile] = File(default=[]),
+    image: Optional[UploadFile] = File(default=None),
     user: User = Depends(get_current_user)
 ):
     """Create a new known person with optional images."""
     
-    if not name or not relationship or not for_user_id:
+    if not name or not relationship:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Name, relationship, and forUserId are required"
+            detail="Name and relationship are required"
         )
+
+    target_user_id = for_user_id or str(user.id)
+
+    # App compatibility: accept single "image" field or "files" list.
+    upload_files = list(files)
+    if image is not None:
+        upload_files.append(image)
     
     # Save uploaded images
     images = []
@@ -141,7 +157,7 @@ async def create_known_person(
     uploads_dir = os.path.join(os.path.dirname(__file__), "..", "..", "uploads")
     os.makedirs(uploads_dir, exist_ok=True)
     
-    for file in files:
+    for file in upload_files:
         # Generate filename
         ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
         filename = f"face-{uuid.uuid4().hex[:8]}.{ext}"
@@ -170,7 +186,7 @@ async def create_known_person(
         name=name,
         relationship=relationship,
         added_by=str(user.id),
-        for_user=for_user_id,
+        for_user=target_user_id,
         images=images,
         face_embeddings=face_embeddings,
         notes=notes,
@@ -182,13 +198,9 @@ async def create_known_person(
     
     return {
         "message": "Known person added successfully",
-        "person": {
-            "id": str(person.id),
-            "name": person.name,
-            "relationship": person.relationship,
-            "has_face_embeddings": len(person.face_embeddings) > 0,
-            "images_count": len(person.images)
-        }
+        "person": _serialize_known_person(person, include_embeddings=True),
+        # Compatibility payload for mobile screens expecting a direct person model.
+        **_serialize_known_person(person, include_embeddings=True),
     }
 
 
@@ -232,11 +244,8 @@ async def update_known_person(
     
     return {
         "message": "Known person updated successfully",
-        "knownPerson": {
-            "id": str(person.id),
-            "name": person.name,
-            "relationship": person.relationship
-        }
+        "knownPerson": _serialize_known_person(person, include_embeddings=True),
+        **_serialize_known_person(person, include_embeddings=True),
     }
 
 
@@ -300,6 +309,27 @@ async def add_images(
             "has_face_embeddings": len(person.face_embeddings) > 0
         }
     }
+
+
+@router.post("/{person_id}/photos")
+async def add_photos_compat(
+    person_id: str,
+    image: Optional[UploadFile] = File(default=None),
+    files: List[UploadFile] = File(default=[]),
+    user: User = Depends(get_current_user)
+):
+    """Compatibility route for mobile clients that post to /photos."""
+    upload_files = list(files)
+    if image is not None:
+        upload_files.append(image)
+
+    if not upload_files:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No photo uploaded"
+        )
+
+    return await add_images(person_id=person_id, files=upload_files, user=user)
 
 
 @router.delete("/{person_id}")

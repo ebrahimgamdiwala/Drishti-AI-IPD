@@ -15,6 +15,8 @@ class PersonCard extends StatelessWidget {
   final VoidCallback? onRecognize;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
+  final bool isFavorite;
+  final VoidCallback? onToggleFavorite;
 
   const PersonCard({
     super.key,
@@ -23,6 +25,8 @@ class PersonCard extends StatelessWidget {
     this.onRecognize,
     this.onEdit,
     this.onDelete,
+    this.isFavorite = false,
+    this.onToggleFavorite,
   });
 
   @override
@@ -135,6 +139,15 @@ class PersonCard extends StatelessWidget {
                   // Action buttons
                   Column(
                     children: [
+                      _ActionButton(
+                        icon: isFavorite ? Icons.star : Icons.star_border,
+                        tooltip: isFavorite
+                            ? 'Remove from Favorites'
+                            : 'Add to Favorites',
+                        color: isFavorite ? Colors.amber.shade700 : null,
+                        onPressed: onToggleFavorite,
+                      ),
+                      const SizedBox(height: 4),
                       _ActionButton(
                         icon: Icons.camera_alt,
                         tooltip: 'Recognize',

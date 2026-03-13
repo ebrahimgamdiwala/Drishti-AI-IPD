@@ -23,6 +23,8 @@ class _VLMCameraScreenState extends State<VLMCameraScreen> {
   File? _selectedImage;
   String? _analysisResult;
   bool _isAnalyzing = false;
+  bool _isPreparingModel = false;
+  bool _autoInitScheduled = false;
   String _selectedMode = 'describe';
 
   final Map<String, String> _analysisPrompts = {
@@ -37,17 +39,73 @@ Focus on obstacles, pathways, doors, stairs, people, and landmarks.''',
   };
 
   @override
+  void initState() {
+    super.initState();
+    _prepareLocalModelIfDownloaded();
+  }
+
+  Future<void> _prepareLocalModelIfDownloaded() async {
+    final vlm = context.read<VLMProvider>();
+    final downloaded = await vlm.areModelsDownloaded;
+
+    if (!mounted) return;
+
+    if (downloaded && !vlm.isReady && !vlm.hasCloudVisionConfigured) {
+      setState(() => _isPreparingModel = true);
+      try {
+        await vlm.initialize();
+      } finally {
+        if (mounted) {
+          setState(() => _isPreparingModel = false);
+        }
+      }
+    }
+  }
+
+  Future<void> _onPreparePressed(VLMProvider vlm) async {
+    setState(() => _isPreparingModel = true);
+    try {
+      await vlm.ensureReady();
+    } finally {
+      if (mounted) {
+        setState(() => _isPreparingModel = false);
+      }
+    }
+  }
+
+  void _scheduleAutoInitIfNeeded(VLMProvider vlm, bool downloaded) {
+    if (_autoInitScheduled || _isPreparingModel) return;
+    if (!downloaded || vlm.isReady || vlm.hasCloudVisionConfigured) return;
+
+    _autoInitScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      setState(() => _isPreparingModel = true);
+      try {
+        await vlm.initialize();
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isPreparingModel = false;
+            _autoInitScheduled = false;
+          });
+        }
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.darkBackground,
       appBar: AppBar(
-        title: const Text('Local AI Vision'),
+        title: const Text('AI Vision'),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
       body: Consumer<VLMProvider>(
         builder: (context, vlm, child) {
-          if (!vlm.isReady) {
+          if (!vlm.isVisionAvailable) {
             return _buildNotReadyState(vlm);
           }
           return _buildReadyState(vlm);
@@ -60,66 +118,103 @@ Focus on obstacles, pathways, doors, stairs, people, and landmarks.''',
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.download_rounded,
-              size: 80,
-              color: AppColors.primaryBlue.withValues(alpha: 0.5),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              vlm.status == VLMStatus.downloading
-                  ? 'Downloading AI Model...'
-                  : vlm.status == VLMStatus.loading
-                  ? 'Loading AI Model...'
-                  : 'AI Model Not Ready',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 16),
-            if (vlm.status == VLMStatus.downloading ||
-                vlm.status == VLMStatus.loading)
-              Column(
-                children: [
-                  LinearProgressIndicator(
-                    value: vlm.progress,
-                    backgroundColor: Colors.white24,
-                    valueColor: AlwaysStoppedAnimation(AppColors.primaryBlue),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${(vlm.progress * 100).toStringAsFixed(1)}%',
-                    style: const TextStyle(color: Colors.white70),
-                  ),
-                ],
-              )
-            else
-              ElevatedButton.icon(
-                onPressed: () => vlm.ensureReady(),
-                icon: const Icon(Icons.download),
-                label: const Text('Download Model (~3GB)'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryBlue,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
+        child: FutureBuilder<bool>(
+          future: vlm.areModelsDownloaded,
+          builder: (context, snapshot) {
+            final downloaded = snapshot.data ?? false;
+            _scheduleAutoInitIfNeeded(vlm, downloaded);
+
+            final statusText = vlm.hasCloudVisionConfigured
+                ? 'Cloud AI Ready'
+                : _isPreparingModel
+                ? 'Preparing AI Model...'
+                : vlm.status == VLMStatus.downloading
+                ? 'Downloading AI Model...'
+                : vlm.status == VLMStatus.loading
+                ? 'Loading AI Model...'
+                : downloaded
+                ? 'AI Model Downloaded'
+                : 'AI Model Not Ready';
+
+            final showProgress =
+                !vlm.hasCloudVisionConfigured &&
+                (_isPreparingModel ||
+                    vlm.status == VLMStatus.downloading ||
+                    vlm.status == VLMStatus.loading);
+
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.download_rounded,
+                  size: 80,
+                  color: AppColors.primaryBlue.withValues(alpha: 0.5),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  statusText,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
-              ),
-            if (vlm.error != null) ...[
-              const SizedBox(height: 16),
-              Text(
-                vlm.error!,
-                style: const TextStyle(color: Colors.redAccent),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ],
+                const SizedBox(height: 16),
+                if (showProgress)
+                  Column(
+                    children: [
+                      LinearProgressIndicator(
+                        value: _isPreparingModel ? null : vlm.progress,
+                        backgroundColor: Colors.white24,
+                        valueColor: AlwaysStoppedAnimation(
+                          AppColors.primaryBlue,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${(vlm.progress * 100).toStringAsFixed(1)}%',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                    ],
+                  )
+                else
+                  ElevatedButton.icon(
+                    onPressed: _isPreparingModel
+                        ? null
+                        : () => _onPreparePressed(vlm),
+                    icon: Icon(
+                      vlm.hasCloudVisionConfigured
+                          ? Icons.cloud_done
+                          : downloaded
+                          ? Icons.play_circle_outline
+                          : Icons.download,
+                    ),
+                    label: Text(
+                      vlm.hasCloudVisionConfigured
+                          ? 'Use Online AI'
+                          : downloaded
+                          ? 'Initialize Downloaded Model'
+                          : 'Download Model (~3GB)',
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryBlue,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                    ),
+                  ),
+                if (vlm.error != null) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    vlm.error!,
+                    style: const TextStyle(color: Colors.redAccent),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ],
+            );
+          },
         ),
       ),
     );

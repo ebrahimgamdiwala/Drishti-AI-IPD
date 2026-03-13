@@ -11,6 +11,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../data/providers/auth_provider.dart';
 import '../../../data/providers/voice_navigation_provider.dart';
 import '../../../data/models/voice_navigation/microphone_state.dart';
+import '../../../data/services/network_status_service.dart';
 import '../../widgets/voice_navigation/voice_navigation_widgets.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -23,6 +24,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
+  late Future<bool> _internetStatusFuture;
 
   @override
   void initState() {
@@ -31,6 +33,7 @@ class _HomeScreenState extends State<HomeScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     );
+    _internetStatusFuture = NetworkStatusService().hasInternetConnection();
   }
 
   @override
@@ -69,11 +72,13 @@ class _HomeScreenState extends State<HomeScreen>
     final user = context.watch<AuthProvider>().user;
     final voiceNav = context.watch<VoiceNavigationProvider>();
     final micState = voiceNav.microphoneState;
-    
+
     // Control pulse animation based on microphone state
-    if (micState == MicrophoneState.listening && !_pulseController.isAnimating) {
+    if (micState == MicrophoneState.listening &&
+        !_pulseController.isAnimating) {
       _pulseController.repeat();
-    } else if (micState != MicrophoneState.listening && _pulseController.isAnimating) {
+    } else if (micState != MicrophoneState.listening &&
+        _pulseController.isAnimating) {
       _pulseController.stop();
       _pulseController.reset();
     }
@@ -85,248 +90,281 @@ class _HomeScreenState extends State<HomeScreen>
           builder: (context) {
             final l10n = AppLocalizations.of(context)!;
             return Column(
-          children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  // Avatar
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: AppColors.primaryBlue.withValues(alpha: 0.2),
-                        width: 2,
-                      ),
-                    ),
-                    child: ClipOval(
-                      child: Container(
-                        color: AppColors.primaryBlue.withValues(alpha: 0.1),
-                        child: const Icon(
-                          Icons.person,
-                          color: AppColors.primaryBlue,
-                          size: 28,
-                        ),
-                      ),
-                    ),
-                  ),
+              children: [
+                // Header
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child:
+                      Row(
+                            children: [
+                              // Avatar
+                              Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: AppColors.primaryBlue.withValues(
+                                      alpha: 0.2,
+                                    ),
+                                    width: 2,
+                                  ),
+                                ),
+                                child: ClipOval(
+                                  child: Container(
+                                    color: AppColors.primaryBlue.withValues(
+                                      alpha: 0.1,
+                                    ),
+                                    child: const Icon(
+                                      Icons.person,
+                                      color: AppColors.primaryBlue,
+                                      size: 28,
+                                    ),
+                                  ),
+                                ),
+                              ),
 
-                  const SizedBox(width: 12),
+                              const SizedBox(width: 12),
 
-                  // Greeting
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          l10n.welcomeBack,
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                        Text(
-                          user?.name ?? l10n.user,
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ),
+                              // Greeting
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      l10n.welcomeBack,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodyMedium,
+                                    ),
+                                    Text(
+                                      user?.name ?? l10n.user,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleLarge
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ),
 
-                  // Connection status
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.success.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: AppColors.success,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          l10n.online,
-                          style: const TextStyle(
-                            color: AppColors.success,
-                            fontWeight: FontWeight.w500,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.2, end: 0),
-            ),
+                              // Connection status
+                              FutureBuilder<bool>(
+                                future: _internetStatusFuture,
+                                builder: (context, snapshot) {
+                                  final isOnline = snapshot.data ?? false;
+                                  final statusColor = isOnline
+                                      ? AppColors.success
+                                      : AppColors.warning;
 
-            const Spacer(),
-
-            // Microphone button with voice navigation integration
-            MicrophoneButton(
-              state: micState,
-              onTap: () => _handleMicTap(voiceNav),
-              size: 120,
-              showLabel: false,
-            )
-                .animate()
-                .fadeIn(delay: 200.ms, duration: 500.ms)
-                .scale(
-                  begin: const Offset(0.8, 0.8),
-                  end: const Offset(1, 1),
-                  curve: Curves.easeOutBack,
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: statusColor.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: BoxDecoration(
+                                            color: statusColor,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          isOnline ? l10n.online : l10n.offline,
+                                          style: TextStyle(
+                                            color: statusColor,
+                                            fontWeight: FontWeight.w500,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          )
+                          .animate()
+                          .fadeIn(duration: 500.ms)
+                          .slideY(begin: -0.2, end: 0),
                 ),
 
-            const SizedBox(height: 24),
+                const Spacer(),
 
-            // Status text
-            Text(
-              _getStatusText(micState, l10n),
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: micState == MicrophoneState.listening 
-                    ? AppColors.primaryBlue 
-                    : null,
-              ),
-            ).animate().fadeIn(delay: 300.ms, duration: 300.ms),
+                // Microphone button with voice navigation integration
+                MicrophoneButton(
+                      state: micState,
+                      onTap: () => _handleMicTap(voiceNav),
+                      size: 120,
+                      showLabel: false,
+                    )
+                    .animate()
+                    .fadeIn(delay: 200.ms, duration: 500.ms)
+                    .scale(
+                      begin: const Offset(0.8, 0.8),
+                      end: const Offset(1, 1),
+                      curve: Curves.easeOutBack,
+                    ),
 
-            const SizedBox(height: 16),
+                const SizedBox(height: 24),
 
-            // Quick scan button
-            Semantics(
-              label: l10n.scanButton,
-              button: true,
-              child: TextButton.icon(
-                onPressed: () => _handleQuickScan(voiceNav),
-                icon: const Icon(Icons.camera_alt_outlined),
-                label: Text(l10n.quickScan),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.primaryBlue,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
+                // Status text
+                Text(
+                  _getStatusText(micState, l10n),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: micState == MicrophoneState.listening
+                        ? AppColors.primaryBlue
+                        : null,
                   ),
-                ),
-              ),
-            ).animate().fadeIn(delay: 400.ms, duration: 300.ms),
+                ).animate().fadeIn(delay: 300.ms, duration: 300.ms),
 
-            const Spacer(),
+                const SizedBox(height: 16),
 
-            // Test buttons for STT workaround
-            if (!voiceNav.isSpeechRecognitionAvailable)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.testVoiceCommands,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.warning,
+                // Quick scan button
+                Semantics(
+                  label: l10n.scanButton,
+                  button: true,
+                  child: TextButton.icon(
+                    onPressed: () => _handleQuickScan(voiceNav),
+                    icon: const Icon(Icons.camera_alt_outlined),
+                    label: Text(l10n.quickScan),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.primaryBlue,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      l10n.speechRecognitionUnavailable,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondaryLight,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        _TestCommandButton(
-                          label: l10n.scan,
-                          command: 'scan surroundings',
-                          icon: Icons.camera_alt,
-                          onPressed: () => voiceNav.processVoiceCommand('scan surroundings'),
-                        ),
-                        _TestCommandButton(
-                          label: l10n.dashboard,
-                          command: 'go to dashboard',
-                          icon: Icons.dashboard,
-                          onPressed: () => voiceNav.processVoiceCommand('go to dashboard'),
-                        ),
-                        _TestCommandButton(
-                          label: l10n.settings,
-                          command: 'go to settings',
-                          icon: Icons.settings,
-                          onPressed: () => voiceNav.processVoiceCommand('go to settings'),
-                        ),
-                        _TestCommandButton(
-                          label: l10n.relatives,
-                          command: 'show relatives',
-                          icon: Icons.people,
-                          onPressed: () => voiceNav.processVoiceCommand('show relatives'),
-                        ),
-                        _TestCommandButton(
-                          label: l10n.activity,
-                          command: 'show activity',
-                          icon: Icons.history,
-                          onPressed: () => voiceNav.processVoiceCommand('show activity'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ).animate().fadeIn(delay: 400.ms, duration: 500.ms),
+                  ),
+                ).animate().fadeIn(delay: 400.ms, duration: 300.ms),
 
-            // Quick tips
-            if (voiceNav.isSpeechRecognitionAvailable)
-              Padding(
+                const Spacer(),
+
+                // Test buttons for STT workaround
+                if (!voiceNav.isSpeechRecognitionAvailable)
+                  Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          l10n.quickTips,
+                          l10n.testVoiceCommands,
                           style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w600),
+                              ?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.warning,
+                              ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          l10n.speechRecognitionUnavailable,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: AppColors.textSecondaryLight),
                         ),
                         const SizedBox(height: 12),
-                        SizedBox(
-                          height: 80,
-                          child: ListView(
-                            scrollDirection: Axis.horizontal,
-                            children: [
-                              _TipCard(
-                                text: l10n.sayShowObstacles,
-                                icon: Icons.remove_red_eye,
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            _TestCommandButton(
+                              label: l10n.scan,
+                              command: 'scan surroundings',
+                              icon: Icons.camera_alt,
+                              onPressed: () => voiceNav.processVoiceCommand(
+                                'scan surroundings',
                               ),
-                              _TipCard(
-                                text: l10n.sayWhoIsNear,
-                                icon: Icons.people,
+                            ),
+                            _TestCommandButton(
+                              label: l10n.dashboard,
+                              command: 'go to dashboard',
+                              icon: Icons.dashboard,
+                              onPressed: () => voiceNav.processVoiceCommand(
+                                'go to dashboard',
                               ),
-                              _TipCard(
-                                text: l10n.sayReadText,
-                                icon: Icons.text_fields,
+                            ),
+                            _TestCommandButton(
+                              label: l10n.settings,
+                              command: 'go to settings',
+                              icon: Icons.settings,
+                              onPressed: () => voiceNav.processVoiceCommand(
+                                'go to settings',
                               ),
-                            ],
-                          ),
+                            ),
+                            _TestCommandButton(
+                              label: l10n.relatives,
+                              command: 'show relatives',
+                              icon: Icons.people,
+                              onPressed: () => voiceNav.processVoiceCommand(
+                                'show relatives',
+                              ),
+                            ),
+                            _TestCommandButton(
+                              label: l10n.activity,
+                              command: 'show activity',
+                              icon: Icons.history,
+                              onPressed: () =>
+                                  voiceNav.processVoiceCommand('show activity'),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  )
-                  .animate()
-                  .fadeIn(delay: 500.ms, duration: 500.ms)
-                  .slideY(begin: 0.2, end: 0),
+                  ).animate().fadeIn(delay: 400.ms, duration: 500.ms),
 
-            const SizedBox(height: 20),
-          ],
-        );
+                // Quick tips
+                if (voiceNav.isSpeechRecognitionAvailable)
+                  Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              l10n.quickTips,
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              height: 80,
+                              child: ListView(
+                                scrollDirection: Axis.horizontal,
+                                children: [
+                                  _TipCard(
+                                    text: l10n.sayShowObstacles,
+                                    icon: Icons.remove_red_eye,
+                                  ),
+                                  _TipCard(
+                                    text: l10n.sayWhoIsNear,
+                                    icon: Icons.people,
+                                  ),
+                                  _TipCard(
+                                    text: l10n.sayReadText,
+                                    icon: Icons.text_fields,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                      .animate()
+                      .fadeIn(delay: 500.ms, duration: 500.ms)
+                      .slideY(begin: 0.2, end: 0),
+
+                const SizedBox(height: 20),
+              ],
+            );
           },
         ),
       ),
@@ -394,9 +432,7 @@ class _TestCommandButton extends StatelessWidget {
         icon: Icon(icon, size: 18),
         label: Text(label),
         style: ElevatedButton.styleFrom(
-          backgroundColor: isDark 
-              ? AppColors.darkCard 
-              : AppColors.lightCard,
+          backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
           foregroundColor: AppColors.primaryBlue,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           shape: RoundedRectangleBorder(

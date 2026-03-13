@@ -4,6 +4,7 @@
 library;
 
 import 'dart:io';
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import '../../../generated/l10n/app_localizations.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -13,6 +14,8 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/api_endpoints.dart';
 import '../../../data/models/relative_model.dart';
 import '../../../data/repositories/relatives_repository.dart';
+import '../../../data/repositories/user_repository.dart';
+import '../../../data/services/relative_proximity_service.dart';
 import 'package:provider/provider.dart';
 import '../../../data/services/voice_service.dart';
 import '../../../data/providers/voice_navigation_provider.dart';
@@ -30,11 +33,30 @@ class RelativesScreen extends StatefulWidget {
 
 class _RelativesScreenState extends State<RelativesScreen> {
   final RelativesRepository _repository = RelativesRepository();
+  final UserRepository _userRepository = UserRepository();
   final VoiceService _voiceService = VoiceService();
 
   List<RelativeModel> _relatives = [];
   bool _isLoading = true;
   String _sortBy = 'name';
+  Set<String> _favoriteIds = <String>{};
+  final RelativeProximityService _proximityService = RelativeProximityService();
+  bool _proximityActive = false;
+  bool _isTogglingProximity = false;
+
+  void _showSnackBarSafe(String message) {
+    if (!mounted) return;
+
+    try {
+      final messenger = ScaffoldMessenger.maybeOf(context);
+      if (messenger == null || !messenger.mounted) {
+        return;
+      }
+      messenger.showSnackBar(SnackBar(content: Text(message)));
+    } catch (_) {
+      // Ignore lifecycle edge-cases when the widget tree is being torn down.
+    }
+  }
 
   @override
   void initState() {
@@ -46,18 +68,215 @@ class _RelativesScreenState extends State<RelativesScreen> {
     setState(() => _isLoading = true);
 
     try {
-      _relatives = await _repository.getRelatives();
+      await _repository.syncPendingOperations();
+      final relatives = await _repository.getRelatives();
+      final favoriteIds = await _loadFavoriteIds();
+
+      _relatives = relatives;
+      _favoriteIds = favoriteIds;
       _sortRelatives(_sortBy);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to load relatives: $e')));
-      }
+      _showSnackBarSafe('Failed to load relatives: $e');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
+    }
+  }
+
+  Future<Set<String>> _loadFavoriteIds() async {
+    try {
+      final favorites = await _userRepository.getFavorites();
+      return favorites
+          .map((f) => (f is Map<String, dynamic> ? f['id'] : null))
+          .whereType<String>()
+          .toSet();
+    } catch (_) {
+      return _favoriteIds;
+    }
+  }
+
+  Future<void> _toggleFavorite(RelativeModel relative) async {
+    final isFavorite = _favoriteIds.contains(relative.id);
+
+    try {
+      if (isFavorite) {
+        await _userRepository.removeFromFavorites(relative.id);
+      } else {
+        await _userRepository.addToFavorites(relative.id);
+      }
+
+      if (!mounted) return;
+      setState(() {
+        if (isFavorite) {
+          _favoriteIds.remove(relative.id);
+        } else {
+          _favoriteIds.add(relative.id);
+        }
+      });
+
+      _showSnackBarSafe(
+        isFavorite
+            ? '${relative.name} removed from favorites'
+            : '${relative.name} added to favorites',
+      );
+    } catch (e) {
+      _showSnackBarSafe('Failed to update favorites: $e');
+    }
+  }
+
+  Future<void> _toggleProximityMonitor() async {
+    if (_isTogglingProximity) return;
+    _isTogglingProximity = true;
+
+    try {
+      if (_proximityActive) {
+        await _proximityService.stopMonitoring();
+        if (!mounted) return;
+        setState(() => _proximityActive = false);
+        _showSnackBarSafe('Relative proximity monitoring stopped');
+        return;
+      }
+
+      if (_relatives.where((r) => r.localFaceEmbeddings.isNotEmpty).isEmpty) {
+        _showSnackBarSafe(
+          'No local face embeddings found. Add or sync relatives first.',
+        );
+        return;
+      }
+
+      await _proximityService.startMonitoring(_relatives);
+      if (!mounted) return;
+      setState(() => _proximityActive = true);
+      await _showProximityPreviewSheet();
+    } catch (e) {
+      _showSnackBarSafe('Unable to start proximity monitor: $e');
+    } finally {
+      _isTogglingProximity = false;
+    }
+  }
+
+  Future<void> _showProximityPreviewSheet() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      enableDrag: true,
+      backgroundColor: Colors.black,
+      builder: (ctx) {
+        bool switchInProgress = false;
+
+        return StatefulBuilder(
+          builder: (modalContext, setModalState) {
+            final controller = _proximityService.previewController;
+            final hasPreview =
+                controller != null && controller.value.isInitialized;
+            final previewAspectRatio = hasPreview
+                ? controller.value.aspectRatio
+                : (4 / 3);
+
+            return SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
+                    child: Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Relative Watch Live Preview',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: switchInProgress
+                              ? null
+                              : () async {
+                                  setModalState(() => switchInProgress = true);
+                                  final switched = await _proximityService
+                                      .switchCamera();
+                                  if (modalContext.mounted) {
+                                    setModalState(() => switchInProgress = false);
+                                  }
+                                  if (!switched) {
+                                    _showSnackBarSafe(
+                                      'Unable to switch camera on this device right now.',
+                                    );
+                                  }
+                                },
+                          icon: const Icon(
+                            Icons.cameraswitch,
+                            color: Colors.white,
+                          ),
+                          tooltip: 'Switch Camera (may take a second)',
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          icon: const Icon(Icons.close, color: Colors.white),
+                          tooltip: 'Close Preview',
+                        ),
+                      ],
+                    ),
+                  ),
+                  AspectRatio(
+                    aspectRatio: previewAspectRatio,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        if (hasPreview && !switchInProgress)
+                          CameraPreview(
+                            controller,
+                            key: ValueKey(controller.description.name),
+                          )
+                        else
+                          const DecoratedBox(
+                            decoration: BoxDecoration(color: Colors.black87),
+                            child: SizedBox.expand(),
+                          ),
+                        if (switchInProgress)
+                          Container(
+                            color: Colors.black45,
+                            padding: const EdgeInsets.all(12),
+                            child: const Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                SizedBox(height: 10),
+                                Text(
+                                  'Switching camera...',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    // Closing preview also stops monitoring to release camera cleanly.
+    await _proximityService.stopMonitoring();
+    if (mounted) {
+      setState(() => _proximityActive = false);
+      _showSnackBarSafe('Relative proximity monitoring stopped');
     }
   }
 
@@ -137,16 +356,13 @@ class _RelativesScreenState extends State<RelativesScreen> {
     if (confirm == true) {
       try {
         await _repository.deleteRelative(relative.id);
+        if (!mounted) return;
         setState(() {
           _relatives.removeWhere((r) => r.id == relative.id);
         });
         _voiceService.speak('${relative.name} deleted.');
       } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete relative: $e')),
-          );
-        }
+        _showSnackBarSafe('Failed to delete relative: $e');
       }
     }
   }
@@ -166,6 +382,12 @@ class _RelativesScreenState extends State<RelativesScreen> {
           break;
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _proximityService.stopMonitoring();
+    super.dispose();
   }
 
   @override
@@ -194,9 +416,20 @@ class _RelativesScreenState extends State<RelativesScreen> {
                         ),
                       ),
                       IconButton(
-                        onPressed: () {},
+                        onPressed: _toggleProximityMonitor,
+                        icon: Icon(
+                          _proximityActive
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                        ),
+                        tooltip: _proximityActive
+                            ? 'Stop Relative Watch'
+                            : 'Start Relative Watch',
+                      ),
+                      IconButton(
+                        onPressed: _loadRelatives,
                         icon: const Icon(Icons.search),
-                        tooltip: 'Search',
+                        tooltip: 'Refresh & Sync',
                       ),
                       IconButton(
                         onPressed: () {},
@@ -251,6 +484,9 @@ class _RelativesScreenState extends State<RelativesScreen> {
                             final relative = _relatives[index];
                             return PersonCard(
                                   relative: relative,
+                                isFavorite: _favoriteIds.contains(relative.id),
+                                onToggleFavorite: () =>
+                                  _toggleFavorite(relative),
                                   onTap: () => _editRelative(relative),
                                   onEdit: () => _editRelative(relative),
                                   onDelete: () => _deleteRelative(relative),
@@ -372,6 +608,20 @@ class _AddRelativeSheetState extends State<AddRelativeSheet> {
   String? _localImagePath;
   bool _isLoading = false;
 
+  void _showSnackBarSafe(String message) {
+    if (!mounted) return;
+
+    try {
+      final messenger = ScaffoldMessenger.maybeOf(context);
+      if (messenger == null || !messenger.mounted) {
+        return;
+      }
+      messenger.showSnackBar(SnackBar(content: Text(message)));
+    } catch (_) {
+      // Ignore lifecycle edge-cases when closing the sheet.
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -437,9 +687,7 @@ class _AddRelativeSheetState extends State<AddRelativeSheet> {
       if (widget.relative == null) {
         // Add new relative
         if (_selectedImage == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please select an image')),
-          );
+          _showSnackBarSafe('Please select an image');
           setState(() => _isLoading = false);
           return;
         }
@@ -473,11 +721,7 @@ class _AddRelativeSheetState extends State<AddRelativeSheet> {
       if (!mounted) return;
       Navigator.pop(context, result);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to save: $e')));
-      }
+      _showSnackBarSafe('Failed to save: $e');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -489,195 +733,220 @@ class _AddRelativeSheetState extends State<AddRelativeSheet> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isEditing = widget.relative != null;
+    final insets = MediaQuery.of(context).viewInsets;
+    final screenHeight = MediaQuery.of(context).size.height;
 
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkBackground : AppColors.lightBackground,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
-        children: [
-          // Handle
-          Container(
-            margin: const EdgeInsets.only(top: 12),
-            width: 40,
-            height: 4,
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: AnimatedPadding(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+        padding: EdgeInsets.only(bottom: insets.bottom),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: screenHeight * 0.9),
+          child: Container(
             decoration: BoxDecoration(
-              color: AppColors.lightBorder,
-              borderRadius: BorderRadius.circular(2),
+              color: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             ),
-          ),
-
-          // Header
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
               children: [
-                Text(
-                  isEditing ? AppStrings.editRelative : AppStrings.addRelative,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    color: AppColors.primaryBlue,
-                    fontWeight: FontWeight.w600,
+                // Handle
+                Container(
+                  margin: const EdgeInsets.only(top: 12),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.lightBorder,
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
-                ),
-              ],
-            ),
-          ),
 
-          // Form
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    // Photo picker
-                    GestureDetector(
-                      onTap: () {
-                        showModalBottomSheet(
-                          context: context,
-                          builder: (context) => SafeArea(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                ListTile(
-                                  leading: const Icon(Icons.camera_alt),
-                                  title: const Text('Take Photo'),
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    _pickImage();
-                                  },
-                                ),
-                                ListTile(
-                                  leading: const Icon(Icons.photo_library),
-                                  title: const Text('Choose from Gallery'),
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    _pickFromGallery();
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        width: 120,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          color: AppColors.lightInputFill,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: AppColors.primaryBlue.withValues(alpha: 0.3),
-                            width: 3,
-                          ),
-                        ),
-                        child: ClipOval(
-                          child: _selectedImage != null
-                              ? Image.file(_selectedImage!, fit: BoxFit.cover)
-                              : (widget.relative?.images.isNotEmpty ?? false)
-                              ? Image.network(
-                                  widget.relative!.images.first.path.startsWith(
-                                        'http',
-                                      )
-                                      ? widget.relative!.images.first.path
-                                      : '${ApiEndpoints.baseUrl}${widget.relative!.images.first.path}',
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) => const Icon(
-                                    Icons.person,
-                                    size: 50,
-                                    color: AppColors.primaryBlue,
-                                  ),
-                                )
-                              : _localImagePath != null
-                              ? Image.file(
-                                  File(_localImagePath!),
-                                  fit: BoxFit.cover,
-                                )
-                              : Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.add_a_photo,
-                                      color: AppColors.primaryBlue,
-                                      size: 32,
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Add Photo',
-                                      style: TextStyle(
-                                        color: AppColors.primaryBlue,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                // Header
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        isEditing ? AppStrings.editRelative : AppStrings.addRelative,
+                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          color: AppColors.primaryBlue,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Form fields
+                Expanded(
+                  child: SingleChildScrollView(
+                    keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        children: [
+                          // Photo picker
+                          GestureDetector(
+                            onTap: () {
+                              showModalBottomSheet(
+                                context: context,
+                                builder: (context) => SafeArea(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      ListTile(
+                                        leading: const Icon(Icons.camera_alt),
+                                        title: const Text('Take Photo'),
+                                        onTap: () {
+                                          Navigator.pop(context);
+                                          _pickImage();
+                                        },
+                                      ),
+                                      ListTile(
+                                        leading: const Icon(Icons.photo_library),
+                                        title: const Text('Choose from Gallery'),
+                                        onTap: () {
+                                          Navigator.pop(context);
+                                          _pickFromGallery();
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              width: 120,
+                              height: 120,
+                              decoration: BoxDecoration(
+                                color: AppColors.lightInputFill,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppColors.primaryBlue.withValues(alpha: 0.3),
+                                  width: 3,
+                                ),
+                              ),
+                              child: ClipOval(
+                                child: _selectedImage != null
+                                    ? Image.file(_selectedImage!, fit: BoxFit.cover)
+                                    : (widget.relative?.images.isNotEmpty ?? false)
+                                    ? Image.network(
+                                        widget.relative!.images.first.path.startsWith('http')
+                                            ? widget.relative!.images.first.path
+                                            : '${ApiEndpoints.baseUrl}${widget.relative!.images.first.path}',
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, _, _) => const Icon(
+                                          Icons.person,
+                                          size: 50,
+                                          color: AppColors.primaryBlue,
+                                        ),
+                                      )
+                                    : _localImagePath != null
+                                    ? Image.file(
+                                        File(_localImagePath!),
+                                        fit: BoxFit.cover,
+                                      )
+                                    : Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.add_a_photo,
+                                            color: AppColors.primaryBlue,
+                                            size: 32,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Add Photo',
+                                            style: TextStyle(
+                                              color: AppColors.primaryBlue,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          CustomTextField(
+                            controller: _nameController,
+                            label: 'Name',
+                            hint: 'Enter name',
+                            prefixIcon: Icons.person_outline,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter a name';
+                              }
+                              return null;
+                            },
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          CustomTextField(
+                            controller: _relationshipController,
+                            label: AppStrings.relationship,
+                            hint: 'e.g., Mother, Father, Friend',
+                            prefixIcon: Icons.family_restroom,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter relationship';
+                              }
+                              return null;
+                            },
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          CustomTextField(
+                            controller: _notesController,
+                            label: AppStrings.notes,
+                            hint: 'Optional notes...',
+                            prefixIcon: Icons.notes,
+                            maxLines: 3,
+                          ),
+
+                          const SizedBox(height: 24),
+                        ],
+                      ),
                     ),
+                  ),
+                ),
 
-                    const SizedBox(height: 24),
-
-                    CustomTextField(
-                      controller: _nameController,
-                      label: 'Name',
-                      hint: 'Enter name',
-                      prefixIcon: Icons.person_outline,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter a name';
-                        }
-                        return null;
-                      },
+                // Sticky action area
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.darkCard : Colors.white,
+                    border: Border(
+                      top: BorderSide(
+                        color: AppColors.lightBorder.withValues(alpha: 0.35),
+                      ),
                     ),
-
-                    const SizedBox(height: 16),
-
-                    CustomTextField(
-                      controller: _relationshipController,
-                      label: AppStrings.relationship,
-                      hint: 'e.g., Mother, Father, Friend',
-                      prefixIcon: Icons.family_restroom,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter relationship';
-                        }
-                        return null;
-                      },
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    CustomTextField(
-                      controller: _notesController,
-                      label: AppStrings.notes,
-                      hint: 'Optional notes...',
-                      prefixIcon: Icons.notes,
-                      maxLines: 3,
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    GradientButton(
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: GradientButton(
                       text: isEditing ? 'Save Changes' : 'Add Relative',
                       isLoading: _isLoading,
                       onPressed: _save,
                     ),
-
-                    const SizedBox(height: 20),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }

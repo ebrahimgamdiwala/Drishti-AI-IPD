@@ -2,7 +2,6 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:dio/dio.dart';
 import '../../models/voice_navigation/vision_result.dart';
 import '../../models/voice_navigation/safety_result.dart';
 import '../../models/voice_navigation/detected_object.dart';
@@ -10,9 +9,10 @@ import '../../models/voice_navigation/bounding_box.dart';
 import '../../models/voice_navigation/clock_position.dart';
 import '../../models/voice_navigation/hazard.dart';
 import '../../models/voice_navigation/hazard_level.dart';
+import '../gemini_vision_service.dart';
 import '../local_vlm_service.dart';
 import '../api_service.dart';
-import '../../../core/constants/api_endpoints.dart';
+import '../network_status_service.dart';
 import 'vision_provider.dart';
 
 /// Phone Vision Provider - Implementation using device camera
@@ -25,9 +25,8 @@ class PhoneVisionProvider implements VisionProvider {
   final ImagePicker _imagePicker;
   final LocalVLMService _localVLM;
   final ApiService _apiService;
-
-  /// Whether to use local model (true) or backend (false)
-  bool _useLocalModel = false;
+  final GeminiVisionService _geminiVision = GeminiVisionService();
+  final NetworkStatusService _networkStatus = NetworkStatusService();
 
   /// Cached frame for follow-up questions
   Uint8List? _cachedFrame;
@@ -93,21 +92,7 @@ class PhoneVisionProvider implements VisionProvider {
           customPrompt ??
           'Describe what you see in this image. Focus on objects, people, and any potential obstacles or hazards.';
 
-      // Try backend first, fall back to local
-      VisionResult result;
-      if (!_useLocalModel) {
-        try {
-          result = await _analyzeWithBackend(frame, prompt);
-        } catch (e) {
-          debugPrint(
-            '[PhoneVisionProvider] Backend failed: $e, falling back to local',
-          );
-          _useLocalModel = true;
-          result = await _analyzeWithLocal(frame, prompt);
-        }
-      } else {
-        result = await _analyzeWithLocal(frame, prompt);
-      }
+      final result = await _analyzePreferred(frame, prompt);
 
       stopwatch.stop();
 
@@ -115,7 +100,7 @@ class PhoneVisionProvider implements VisionProvider {
         description: result.description,
         objects: result.objects,
         processingTime: stopwatch.elapsed,
-        usedLocalModel: _useLocalModel,
+        usedLocalModel: result.usedLocalModel,
       );
     } catch (e) {
       stopwatch.stop();
@@ -142,21 +127,7 @@ class PhoneVisionProvider implements VisionProvider {
           'Identify any obstacles or objects that could block movement or navigation. '
           'List each obstacle with its approximate location.';
 
-      // Try backend first, fall back to local
-      VisionResult result;
-      if (!_useLocalModel) {
-        try {
-          result = await _analyzeWithBackend(frame, prompt);
-        } catch (e) {
-          debugPrint(
-            '[PhoneVisionProvider] Backend failed: $e, falling back to local',
-          );
-          _useLocalModel = true;
-          result = await _analyzeWithLocal(frame, prompt);
-        }
-      } else {
-        result = await _analyzeWithLocal(frame, prompt);
-      }
+      final result = await _analyzePreferred(frame, prompt);
 
       stopwatch.stop();
 
@@ -164,7 +135,7 @@ class PhoneVisionProvider implements VisionProvider {
         description: result.description,
         objects: result.objects,
         processingTime: stopwatch.elapsed,
-        usedLocalModel: _useLocalModel,
+        usedLocalModel: result.usedLocalModel,
       );
     } catch (e) {
       stopwatch.stop();
@@ -191,21 +162,7 @@ class PhoneVisionProvider implements VisionProvider {
           'Identify all people in this image. '
           'Describe their approximate location and any distinguishing features.';
 
-      // Try backend first, fall back to local
-      VisionResult result;
-      if (!_useLocalModel) {
-        try {
-          result = await _analyzeWithBackend(frame, prompt);
-        } catch (e) {
-          debugPrint(
-            '[PhoneVisionProvider] Backend failed: $e, falling back to local',
-          );
-          _useLocalModel = true;
-          result = await _analyzeWithLocal(frame, prompt);
-        }
-      } else {
-        result = await _analyzeWithLocal(frame, prompt);
-      }
+      final result = await _analyzePreferred(frame, prompt);
 
       stopwatch.stop();
 
@@ -213,7 +170,7 @@ class PhoneVisionProvider implements VisionProvider {
         description: result.description,
         objects: result.objects,
         processingTime: stopwatch.elapsed,
-        usedLocalModel: _useLocalModel,
+        usedLocalModel: result.usedLocalModel,
       );
     } catch (e) {
       stopwatch.stop();
@@ -240,21 +197,7 @@ class PhoneVisionProvider implements VisionProvider {
           'Read and transcribe all visible text in this image. '
           'Include signs, labels, documents, or any written content.';
 
-      // Try backend first, fall back to local
-      VisionResult result;
-      if (!_useLocalModel) {
-        try {
-          result = await _analyzeWithBackend(frame, prompt);
-        } catch (e) {
-          debugPrint(
-            '[PhoneVisionProvider] Backend failed: $e, falling back to local',
-          );
-          _useLocalModel = true;
-          result = await _analyzeWithLocal(frame, prompt);
-        }
-      } else {
-        result = await _analyzeWithLocal(frame, prompt);
-      }
+      final result = await _analyzePreferred(frame, prompt);
 
       stopwatch.stop();
 
@@ -262,7 +205,7 @@ class PhoneVisionProvider implements VisionProvider {
         description: result.description,
         objects: result.objects,
         processingTime: stopwatch.elapsed,
-        usedLocalModel: _useLocalModel,
+        usedLocalModel: result.usedLocalModel,
       );
     } catch (e) {
       stopwatch.stop();
@@ -288,21 +231,7 @@ class PhoneVisionProvider implements VisionProvider {
           'Focus on vehicles, stairs, holes, fire, water, cliffs, or any immediate dangers. '
           'For each hazard, estimate its distance and location.';
 
-      // Try backend first, fall back to local
-      VisionResult visionResult;
-      if (!_useLocalModel) {
-        try {
-          visionResult = await _analyzeWithBackend(frame, prompt);
-        } catch (e) {
-          debugPrint(
-            '[PhoneVisionProvider] Backend failed: $e, falling back to local',
-          );
-          _useLocalModel = true;
-          visionResult = await _analyzeWithLocal(frame, prompt);
-        }
-      } else {
-        visionResult = await _analyzeWithLocal(frame, prompt);
-      }
+      final visionResult = await _analyzePreferred(frame, prompt);
 
       // Extract hazards from detected objects
       final hazards = <Hazard>[];
@@ -379,62 +308,35 @@ class PhoneVisionProvider implements VisionProvider {
     }
   }
 
-  /// Analyze frame with backend VLM
-  Future<VisionResult> _analyzeWithBackend(
-    Uint8List frame,
-    String prompt,
-  ) async {
-    try {
-      // Create multipart form data
-      final formData = FormData.fromMap({
-        'image': MultipartFile.fromBytes(frame, filename: 'frame.jpg'),
-        'prompt': prompt,
-      });
+  Future<VisionResult> _analyzePreferred(Uint8List frame, String prompt) async {
+    if (_geminiVision.isConfigured &&
+        await _networkStatus.hasInternetConnection()) {
+      try {
+        final result =
+            _cachedFrameFile != null && await _cachedFrameFile!.exists()
+            ? await _geminiVision.analyzeImageFile(
+                imageFile: _cachedFrameFile!,
+                prompt: prompt,
+              )
+            : await _geminiVision.analyzeImage(
+                imageBytes: frame,
+                prompt: prompt,
+              );
 
-      // Send to backend
-      final response = await _apiService.postFormData(
-        ApiEndpoints.analyze,
-        formData,
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception('Backend returned status ${response.statusCode}');
+        return VisionResult(
+          description: result.description,
+          objects: result.objects,
+          processingTime: result.inferenceTime,
+          usedLocalModel: false,
+        );
+      } catch (e) {
+        debugPrint(
+          '[PhoneVisionProvider] Cloud vision request failed, falling back to local: $e',
+        );
       }
-
-      // Parse response
-      final data = response.data as Map<String, dynamic>;
-      final description = data['description'] as String? ?? '';
-      final objectsData = data['objects'] as List<dynamic>? ?? [];
-
-      // Parse detected objects
-      final objects = objectsData.map((obj) {
-        final objMap = obj as Map<String, dynamic>;
-        final bbox = objMap['bounding_box'] as Map<String, dynamic>;
-        final boundingBox = BoundingBox(
-          x: (bbox['x'] as num).toDouble(),
-          y: (bbox['y'] as num).toDouble(),
-          width: (bbox['width'] as num).toDouble(),
-          height: (bbox['height'] as num).toDouble(),
-        );
-
-        return DetectedObject(
-          label: objMap['label'] as String,
-          confidence: (objMap['confidence'] as num).toDouble(),
-          boundingBox: boundingBox,
-          clockPosition: _toClockPosition(boundingBox),
-        );
-      }).toList();
-
-      return VisionResult(
-        description: description,
-        objects: objects,
-        processingTime: Duration.zero, // Will be set by caller
-        usedLocalModel: false,
-      );
-    } catch (e) {
-      debugPrint('[PhoneVisionProvider] Backend analysis error: $e');
-      rethrow;
     }
+
+    return _analyzeWithLocal(frame, prompt);
   }
 
   /// Analyze frame with local VLM
@@ -663,10 +565,5 @@ class PhoneVisionProvider implements VisionProvider {
   void clearCache() {
     _cachedFrame = null;
     _cachedFrameFile = null;
-  }
-
-  /// Reset to try backend again
-  void resetBackendPreference() {
-    _useLocalModel = false;
   }
 }

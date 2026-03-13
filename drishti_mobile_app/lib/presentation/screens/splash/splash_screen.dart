@@ -104,9 +104,9 @@ class _SplashScreenState extends State<SplashScreen>
     await Future.microtask(() async {
       final authProvider = context.read<AuthProvider>();
       await authProvider.init();
-      
+
       if (!mounted) return;
-      
+
       _isAuthenticated = authProvider.isAuthenticated;
     });
 
@@ -137,16 +137,17 @@ class _SplashScreenState extends State<SplashScreen>
         final vlmProvider = context.read<VLMProvider>();
         final modelsDownloaded = await vlmProvider.areModelsDownloaded;
 
-        if (modelsDownloaded) {
+        if (modelsDownloaded || vlmProvider.isVisionAvailable) {
           // Models exist - initialize if needed and go to main
-          if (!vlmProvider.isReady) {
+          if (modelsDownloaded && !vlmProvider.isReady) {
             await vlmProvider.initialize();
           }
           destinationScreen = const MainShell();
           destinationRoute = AppRoutes.main;
         } else {
           // Models don't exist - go to download screen
-          destinationScreen = const MainShell(); // Show main underneath for reveal
+          destinationScreen =
+              const MainShell(); // Show main underneath for reveal
           destinationRoute = AppRoutes.modelDownload;
         }
       }

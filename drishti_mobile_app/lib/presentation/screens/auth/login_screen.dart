@@ -8,7 +8,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../../../generated/l10n/app_localizations.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_strings.dart';
 import '../../../data/providers/auth_provider.dart';
 import '../../../data/services/voice_service.dart';
 import '../../../data/services/biometric_service.dart';

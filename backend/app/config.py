@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     # Ollama VLM
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "llava:7b"
+
+    # Gemini VLM (backend-managed for mobile clients)
+    gemini_api_key: Optional[str] = None
+    gemini_model: str = "gemini-2.5-flash"
+    gemini_fallback_model: str = "gemini-flash-latest"
     
     # Frontend URL (for email links)
     frontend_url: str = "http://localhost:5173"

@@ -142,7 +142,7 @@ class _VLMChatScreenState extends State<VLMChatScreen>
       body: Consumer<VLMProvider>(
         builder: (context, vlm, child) {
           final isDark = Theme.of(context).brightness == Brightness.dark;
-          if (!vlm.isReady) {
+          if (!vlm.isVisionAvailable) {
             return _buildNotReadyState(vlm, isDark);
           }
           return _buildChatInterface(vlm, isDark);
@@ -169,7 +169,9 @@ class _VLMChatScreenState extends State<VLMChatScreen>
             ),
             const SizedBox(height: 24),
             Text(
-              vlm.status == VLMStatus.downloading
+              vlm.hasCloudVisionConfigured
+                  ? 'Cloud AI Ready'
+                  : vlm.status == VLMStatus.downloading
                   ? 'Downloading AI Model...'
                   : vlm.status == VLMStatus.loading
                   ? 'Loading AI Model...'
@@ -181,8 +183,9 @@ class _VLMChatScreenState extends State<VLMChatScreen>
               ),
             ),
             const SizedBox(height: 16),
-            if (vlm.status == VLMStatus.downloading ||
-                vlm.status == VLMStatus.loading)
+            if (!vlm.hasCloudVisionConfigured &&
+                (vlm.status == VLMStatus.downloading ||
+                    vlm.status == VLMStatus.loading))
               Column(
                 children: [
                   LinearProgressIndicator(
@@ -200,8 +203,16 @@ class _VLMChatScreenState extends State<VLMChatScreen>
             else
               ElevatedButton.icon(
                 onPressed: () => vlm.ensureReady(),
-                icon: const Icon(Icons.download),
-                label: const Text('Download Model (~3GB)'),
+                icon: Icon(
+                  vlm.hasCloudVisionConfigured
+                      ? Icons.cloud_done
+                      : Icons.download,
+                ),
+                label: Text(
+                  vlm.hasCloudVisionConfigured
+                      ? 'Use Online AI'
+                      : 'Download Model (~3GB)',
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryBlue,
                   padding: const EdgeInsets.symmetric(

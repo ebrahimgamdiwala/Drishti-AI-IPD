@@ -16,12 +16,14 @@ from app.models.user import User
 from app.models.alert import Alert, AlertType, AlertSeverity, DetectedObject
 from app.models.subscription import Subscription
 from app.models.known_person import KnownPerson
-from app.middleware.auth import get_current_user
+from app.middleware.auth import get_current_user, get_current_user_optional
 from app.services.ollama_service import analyze_image, check_ollama_health
+from app.services.gemini_service import analyze_image_with_gemini, check_gemini_health
 from app.services.alert_detector import analyze_for_alerts, extract_objects
 from app.services.email_service import send_alert_email
 from app.services.face_service import identify_face, extract_embedding_from_base64
 from app.config import get_settings
+from app.database import is_database_available
 
 
 router = APIRouter(prefix="/api/model", tags=["Model"])
@@ -43,7 +45,7 @@ class IdentifyRequest(BaseModel):
 @router.post("/analyze")
 async def analyze(
     request: AnalyzeRequest,
-    user: User = Depends(get_current_user)
+    user: Optional[User] = Depends(get_current_user_optional)
 ):
     """Analyze an image using the vision language model."""
     
@@ -89,8 +91,32 @@ async def analyze(
     except Exception as e:
         print(f"Failed to save image: {e}")
     
-    # Analyze with Ollama
-    result = await analyze_image(image_base64, request.prompt)
+    # Analyze with backend-managed cloud vision first, then backend Ollama fallback.
+    result = None
+    if settings.gemini_api_key:
+        result = await analyze_image_with_gemini(
+            image_base64=image_base64,
+            prompt=request.prompt,
+            image_mime=request.image_mime or "image/jpeg",
+        )
+
+    if not result or not result.get("success"):
+        ollama_result = await analyze_image(image_base64, request.prompt)
+        if ollama_result.get("success"):
+            ollama_result["engine"] = "ollama"
+            ollama_result["description"] = ollama_result.get("response", "")
+            ollama_result["objects"] = []
+            ollama_result["prompt_tokens"] = 0
+            ollama_result["completion_tokens"] = 0
+            ollama_result["inference_ms"] = 0
+            result = ollama_result
+        elif result and result.get("error"):
+            result = {
+                "success": False,
+                "error": f"Cloud vision failed: {result['error']}. Local backend fallback failed: {ollama_result.get('error', 'unknown error')}"
+            }
+        else:
+            result = ollama_result
     
     if not result.get("success"):
         raise HTTPException(
@@ -100,12 +126,14 @@ async def analyze(
     
     # Analyze for alerts
     alert_analysis = analyze_for_alerts(result["response"])
-    detected_objects = extract_objects(result["response"])
+    detected_objects = result.get("objects") or extract_objects(result["response"])
     
     alert_id = None
     
-    # Create alert if needed
-    if alert_analysis["detected"] and alert_analysis["severity"] != "low":
+    can_use_db = is_database_available() and user is not None
+
+    # Create alert if needed and DB/auth are available
+    if can_use_db and alert_analysis["detected"] and alert_analysis["severity"] != "low":
         alert = Alert(
             user_id=str(user.id),
             type=AlertType(alert_analysis["type"]),
@@ -113,7 +141,14 @@ async def analyze(
             description=result["response"],
             model_response=result["response"],
             image_ref=saved_image_url,
-            detected_objects=[DetectedObject(**obj) for obj in detected_objects]
+            detected_objects=[
+                DetectedObject(
+                    object=obj.get("label") or obj.get("object") or "unknown",
+                    confidence=float(obj.get("confidence", 0.0) or 0.0),
+                    distance=obj.get("distance") or "unknown",
+                )
+                for obj in detected_objects
+            ]
         )
         await alert.insert()
         alert_id = str(alert.id)
@@ -150,7 +185,12 @@ async def analyze(
     return {
         "success": True,
         "response": result["response"],
+        "description": result.get("description", result["response"]),
         "model": result["model"],
+        "engine": result.get("engine", "ollama"),
+        "promptTokens": result.get("prompt_tokens", 0),
+        "completionTokens": result.get("completion_tokens", 0),
+        "inferenceTimeMs": result.get("inference_ms", 0),
         "savedImageUrl": saved_image_url,
         "sessionId": request.session_id,
         "alert": {
@@ -160,15 +200,20 @@ async def analyze(
             "keywords": alert_analysis["keywords"],
             "alertId": alert_id
         },
+        "dbAvailable": can_use_db,
         "detectedObjects": detected_objects
     }
 
 
 @router.get("/health")
 async def health():
-    """Check Ollama health status."""
-    health_status = await check_ollama_health()
-    return health_status
+    """Check backend vision engine health status."""
+    settings = get_settings()
+    return {
+        "preferred": "gemini" if settings.gemini_api_key else "ollama",
+        "gemini": await check_gemini_health(),
+        "ollama": await check_ollama_health(),
+    }
 
 
 @router.post("/identify")

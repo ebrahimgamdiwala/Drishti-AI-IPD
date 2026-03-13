@@ -1,5 +1,5 @@
 /// Drishti App - Relative Model
-/// 
+///
 /// Known person / relative data model.
 library;
 
@@ -16,6 +16,8 @@ class RelativeModel {
   final String? email;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final bool isPendingSync;
+  final List<List<double>> localFaceEmbeddings;
 
   RelativeModel({
     required this.id,
@@ -28,10 +30,12 @@ class RelativeModel {
     this.notes,
     this.phoneNumber,
     this.email,
+    this.isPendingSync = false,
+    this.localFaceEmbeddings = const [],
     DateTime? createdAt,
     DateTime? updatedAt,
-  })  : createdAt = createdAt ?? DateTime.now(),
-        updatedAt = updatedAt ?? DateTime.now();
+  }) : createdAt = createdAt ?? DateTime.now(),
+       updatedAt = updatedAt ?? DateTime.now();
 
   factory RelativeModel.fromJson(Map<String, dynamic> json) {
     return RelativeModel(
@@ -40,13 +44,26 @@ class RelativeModel {
       relationship: json['relationship'] ?? '',
       addedBy: json['added_by'] ?? '',
       forUser: json['for_user'] ?? '',
-      images: (json['images'] as List<dynamic>?)
-          ?.map((e) => PersonImage.fromJson(e))
-          .toList() ?? [],
+      images:
+          (json['images'] as List<dynamic>?)
+              ?.map((e) => PersonImage.fromJson(e))
+              .toList() ??
+          [],
       hasFaceEmbeddings: json['has_face_embeddings'] ?? false,
       notes: json['notes'],
       phoneNumber: json['phone_number'],
       email: json['email'],
+      isPendingSync: json['is_pending_sync'] ?? false,
+      localFaceEmbeddings:
+          ((json['local_face_embeddings'] as List<dynamic>?) ??
+                  (json['face_embeddings'] as List<dynamic>?))
+              ?.map(
+                (e) => (e as List<dynamic>)
+                    .map((v) => (v as num).toDouble())
+                    .toList(),
+              )
+              .toList() ??
+          const [],
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : DateTime.now(),
@@ -68,6 +85,8 @@ class RelativeModel {
       'notes': notes,
       'phone_number': phoneNumber,
       'email': email,
+      'is_pending_sync': isPendingSync,
+      'local_face_embeddings': localFaceEmbeddings,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -84,6 +103,8 @@ class RelativeModel {
     String? notes,
     String? phoneNumber,
     String? email,
+    bool? isPendingSync,
+    List<List<double>>? localFaceEmbeddings,
   }) {
     return RelativeModel(
       id: id ?? this.id,
@@ -96,6 +117,8 @@ class RelativeModel {
       notes: notes ?? this.notes,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       email: email ?? this.email,
+      isPendingSync: isPendingSync ?? this.isPendingSync,
+      localFaceEmbeddings: localFaceEmbeddings ?? this.localFaceEmbeddings,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
     );
@@ -106,7 +129,7 @@ class PersonImage {
   final String filename;
   final String path;
   final DateTime? uploadedAt;
-  
+
   // Local path for cached/stored images
   final String? localPath;
 

@@ -37,9 +37,9 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen> {
       final vlm = context.read<VLMProvider>();
       final downloaded = await vlm.areModelsDownloaded;
 
-      if (downloaded) {
+      if (downloaded || vlm.isVisionAvailable) {
         // Check if already initialized
-        if (vlm.isReady) {
+        if (vlm.isReady || vlm.hasCloudVisionConfigured) {
           // Auto-skip to main screen
           await _announceAndNavigate();
         } else {
@@ -91,13 +91,18 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen> {
   Future<void> _startDownload() async {
     if (_isDownloading) return;
 
+    final vlm = context.read<VLMProvider>();
+    if (vlm.hasCloudVisionConfigured && !vlm.isReady) {
+      await _announceAndNavigate();
+      return;
+    }
+
     setState(() {
       _isDownloading = true;
       _statusMessage = 'Preparing download...';
     });
 
     try {
-      final vlm = context.read<VLMProvider>();
       await vlm.ensureReady();
 
       if (mounted) {
@@ -105,13 +110,13 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen> {
           _statusMessage = 'Model ready!';
           _isDownloading = false;
         });
-        
+
         // Navigate to main screen after model is ready
         await Future.delayed(const Duration(milliseconds: 500));
         if (mounted) {
           Navigator.pushReplacementNamed(context, AppRoutes.main);
         }
-        
+
         widget.onModelReady?.call();
       }
     } catch (e) {
@@ -165,7 +170,9 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'LLaVA Phi-3 Mini (INT4 Quantized)',
+                  context.watch<VLMProvider>().hasCloudVisionConfigured
+                      ? 'Gemini online-first with local fallback'
+                      : 'LLaVA Phi-3 Mini (INT4 Quantized)',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: isDark
                         ? AppColors.textSecondaryDark
@@ -222,7 +229,9 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen> {
 
                 // Info text
                 Text(
-                  'Model size: ~3 GB\nRequires Wi-Fi recommended',
+                  context.watch<VLMProvider>().hasCloudVisionConfigured
+                      ? 'Gemini will be used when the phone has internet.\nLocal models remain available for offline fallback.'
+                      : 'Model size: ~3 GB\nRequires Wi-Fi recommended',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: isDark

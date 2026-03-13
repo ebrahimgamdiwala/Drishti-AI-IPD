@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import '../models/relative_model.dart';
+import '../models/activity_model.dart';
 
 class StorageService {
   static final StorageService _instance = StorageService._internal();
@@ -164,6 +165,38 @@ class StorageService {
       return list.map((e) => RelativeModel.fromJson(e)).toList();
     }
     return [];
+  }
+
+  Future<void> savePendingRelativeOps(List<Map<String, dynamic>> ops) async {
+    await _prefs?.setString('pending_relative_ops', jsonEncode(ops));
+  }
+
+  List<Map<String, dynamic>> getPendingRelativeOps() {
+    final data = _prefs?.getString('pending_relative_ops');
+    if (data == null) return [];
+    final list = (jsonDecode(data) as List<dynamic>?) ?? const [];
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+  }
+
+  // === Activity Logs ===
+
+  Future<void> saveActivityLogs(List<ActivityModel> logs) async {
+    final data = logs.map((log) => log.toJson()).toList();
+    await _prefs?.setString('activity_logs', jsonEncode(data));
+  }
+
+  List<ActivityModel> getActivityLogs() {
+    final data = _prefs?.getString('activity_logs');
+    if (data == null) return [];
+
+    final list = (jsonDecode(data) as List<dynamic>?) ?? const [];
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map((e) => ActivityModel.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
   }
 
   // === First Launch ===

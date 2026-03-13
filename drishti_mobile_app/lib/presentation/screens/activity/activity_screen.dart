@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import '../../../generated/l10n/app_localizations.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/models/activity_model.dart';
+import '../../../data/services/activity_log_service.dart';
 
 class ActivityScreen extends StatefulWidget {
   const ActivityScreen({super.key});
@@ -18,57 +19,84 @@ class ActivityScreen extends StatefulWidget {
 }
 
 class _ActivityScreenState extends State<ActivityScreen> {
-  List<ActivityModel> _getLocalizedActivities(AppLocalizations l10n) {
-    return [
-      ActivityModel(
-        id: '1',
-        type: ActivityType.alert,
-        title: l10n.criticalAlertDetected,
-        description: l10n.vehicleApproaching,
-        severity: 'critical',
-        timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
-      ),
-      ActivityModel(
-        id: '2',
-        type: ActivityType.voice,
-        title: l10n.voiceCommand,
-        description: l10n.voiceCommandProcessed,
-        timestamp: DateTime.now().subtract(const Duration(minutes: 15)),
-      ),
-      ActivityModel(
-        id: '3',
-        type: ActivityType.identify,
-        title: l10n.personIdentified,
-        description: 'Recognized: John Doe (Father)',
-        timestamp: DateTime.now().subtract(const Duration(hours: 1)),
-      ),
-      ActivityModel(
-        id: '4',
-        type: ActivityType.scan,
-        title: l10n.sceneScanned,
-        description: l10n.clearPathAhead,
-        timestamp: DateTime.now().subtract(const Duration(hours: 2)),
-      ),
-      ActivityModel(
-        id: '5',
-        type: ActivityType.alert,
-        title: l10n.warning,
-        description: l10n.unevenSurface,
-        severity: 'medium',
-        timestamp: DateTime.now().subtract(const Duration(hours: 3)),
-      ),
-    ];
-  }
+  final ActivityLogService _activityLogService = ActivityLogService();
+  List<ActivityModel> _activities = <ActivityModel>[];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    _activityLogService.addListener(_onLogsUpdated);
+    _loadActivities();
+  }
+
+  @override
+  void dispose() {
+    _activityLogService.removeListener(_onLogsUpdated);
+    super.dispose();
+  }
+
+  Future<void> _loadActivities() async {
+    setState(() => _isLoading = true);
+    final logs = await _activityLogService.getLogs();
+    if (!mounted) return;
+    setState(() {
+      _activities = logs;
+      _isLoading = false;
+    });
+  }
+
+  void _onLogsUpdated() {
+    if (!mounted) return;
+    _loadActivities();
+  }
+
+  Future<void> _showHistoryActions() async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.cleaning_services_outlined),
+              title: const Text('Clear non-important logs'),
+              onTap: () => Navigator.of(ctx).pop('clear_non_important'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: const Text('Clear all logs'),
+              onTap: () => Navigator.of(ctx).pop('clear_all'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.refresh),
+              title: const Text('Run cleanup now'),
+              onTap: () => Navigator.of(ctx).pop('cleanup'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    switch (action) {
+      case 'clear_non_important':
+        await _activityLogService.clearLogs(keepImportant: true);
+        break;
+      case 'clear_all':
+        await _activityLogService.clearLogs(keepImportant: false);
+        break;
+      case 'cleanup':
+        await _activityLogService.runMaintenance();
+        break;
+      default:
+        break;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
@@ -88,7 +116,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
                     ),
                   ),
                   IconButton(
-                    onPressed: () {},
+                    onPressed: _showHistoryActions,
                     icon: const Icon(Icons.filter_list),
                     tooltip: l10n.filter,
                   ),
@@ -98,56 +126,51 @@ class _ActivityScreenState extends State<ActivityScreen> {
 
             // Activity list
             Expanded(
-              child: Builder(
-                builder: (context) {
-                  final l10n = AppLocalizations.of(context)!;
-                  final activities = _getLocalizedActivities(l10n);
-                  
-                  return activities.isEmpty
-                      ? _buildEmptyState(l10n)
-                      : ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          itemCount: activities.length,
-                          itemBuilder: (context, index) {
-                            final activity = activities[index];
-                            final showDateHeader =
-                                index == 0 ||
-                                !_isSameDay(
-                                  activities[index - 1].timestamp,
-                                  activity.timestamp,
-                                );
-
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (showDateHeader)
-                                  Padding(
-                                    padding: const EdgeInsets.only(
-                                      top: 16,
-                                      bottom: 8,
-                                    ),
-                                    child: Text(
-                                      _getDateHeader(activity.timestamp, l10n),
-                                      style: Theme.of(context).textTheme.titleMedium
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                            color: AppColors.textSecondaryLight,
-                                          ),
-                                    ),
-                                  ),
-                                _ActivityTile(activity: activity, l10n: l10n)
-                                    .animate()
-                                    .fadeIn(
-                                      delay: Duration(milliseconds: 100 * index),
-                                      duration: 300.ms,
-                                    )
-                                    .slideX(begin: 0.1, end: 0),
-                              ],
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _activities.isEmpty
+                  ? _buildEmptyState(l10n)
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      itemCount: _activities.length,
+                      itemBuilder: (context, index) {
+                        final activity = _activities[index];
+                        final showDateHeader =
+                            index == 0 ||
+                            !_isSameDay(
+                              _activities[index - 1].timestamp,
+                              activity.timestamp,
                             );
-                          },
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (showDateHeader)
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  top: 16,
+                                  bottom: 8,
+                                ),
+                                child: Text(
+                                  _getDateHeader(activity.timestamp, l10n),
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.textSecondaryLight,
+                                      ),
+                                ),
+                              ),
+                            _ActivityTile(activity: activity, l10n: l10n)
+                                .animate()
+                                .fadeIn(
+                                  delay: Duration(milliseconds: 100 * index),
+                                  duration: 300.ms,
+                                )
+                                .slideX(begin: 0.1, end: 0),
+                          ],
                         );
-                },
-              ),
+                      },
+                    ),
             ),
           ],
         ),
@@ -166,10 +189,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
             color: AppColors.textSecondaryLight.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
-          Text(
-            l10n.noActivity,
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text(l10n.noActivity, style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 8),
           Text(
             l10n.activityHistoryWillAppear,
@@ -267,6 +287,15 @@ class _ActivityTile extends StatelessWidget {
                               fontWeight: FontWeight.w600,
                               color: _getSeverityColor(),
                             ),
+                          ),
+                        ),
+                      if (activity.isImportant)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 6),
+                          child: Icon(
+                            Icons.push_pin,
+                            size: 14,
+                            color: AppColors.warning,
                           ),
                         ),
                     ],

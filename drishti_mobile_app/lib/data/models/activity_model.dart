@@ -1,5 +1,5 @@
 /// Drishti App - Activity Model
-/// 
+///
 /// Activity/history log data model.
 library;
 
@@ -37,6 +37,7 @@ class ActivityModel {
   final String? severity;
   final DateTime timestamp;
   final Map<String, dynamic>? metadata;
+  final bool isImportant;
 
   ActivityModel({
     required this.id,
@@ -46,6 +47,7 @@ class ActivityModel {
     this.severity,
     DateTime? timestamp,
     this.metadata,
+    this.isImportant = false,
   }) : timestamp = timestamp ?? DateTime.now();
 
   factory ActivityModel.fromJson(Map<String, dynamic> json) {
@@ -59,6 +61,7 @@ class ActivityModel {
           ? DateTime.parse(json['timestamp'])
           : DateTime.now(),
       metadata: json['metadata'],
+      isImportant: json['is_important'] ?? false,
     );
   }
 
@@ -71,6 +74,7 @@ class ActivityModel {
       'severity': severity,
       'timestamp': timestamp.toIso8601String(),
       'metadata': metadata,
+      'is_important': isImportant,
     };
   }
 }

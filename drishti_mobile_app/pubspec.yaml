@@ -22,6 +22,7 @@ dependencies:
   
   # Network & API
   dio: ^5.4.0
+  connectivity_plus: ^6.1.4
   
   # Storage
   shared_preferences: ^2.2.2
@@ -49,6 +50,7 @@ dependencies:
   # Camera & Images
   image_picker: ^1.0.7
   camera: ^0.10.6
+  face_detection_tflite: ^5.0.7
   
   # Animations
   flutter_animate: ^4.5.0
